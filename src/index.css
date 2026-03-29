@@ -1,0 +1,43 @@
+@import "tailwindcss";
+@plugin "tailwindcss-animate";
+@custom-variant dark (&:where(.dark, .dark *));
+
+:root {
+  --vaul-drawer-wrapper-border-radius: 12px;
+  --drawer-progress: 0;
+  --drawer-transition-duration: 0.5s;
+}
+
+/* Base wrapper styles for smooth transitions and starting border-radius */
+[vaul-drawer-wrapper] {
+  /* Default state when not animating/scaled */
+  border-radius: 0px !important;
+  transition: transform var(--drawer-transition-duration) cubic-bezier(0.32, 0.72, 0, 1), 
+              border-radius var(--drawer-transition-duration) cubic-bezier(0.32, 0.72, 0, 1), 
+              width var(--drawer-transition-duration) cubic-bezier(0.32, 0.72, 0, 1), 
+              margin var(--drawer-transition-duration) cubic-bezier(0.32, 0.72, 0, 1) !important;
+}
+
+/* Custom Vaul background scaling to match iOS perfectly, synchronized dynamically */
+@media (orientation: portrait) {
+  [vaul-drawer-wrapper][style*="transform"] {
+    /* iPhone-like starting rounded corners (48px), transitioning to 13px when scaled */
+    /* Only top corners are rounded, bottom corners stay at 0 */
+    border-radius: calc(48px + var(--drawer-progress) * (13px - 48px)) calc(48px + var(--drawer-progress) * (13px - 48px)) 0 0 !important;
+    /* # este es la "pagina en segundo plano" */
+    transform: scale(calc(1 - var(--drawer-progress) * 0.07)) translate3d(0, calc(var(--drawer-progress) * (10vh - 12px)), 0) !important;
+    width: calc(100% - (var(--drawer-progress) * 12px)) !important;
+    margin: 0 calc(var(--drawer-progress) * 6px) !important;
+  }
+}
+
+@media (orientation: landscape) {
+  [vaul-drawer-wrapper] {
+    border-radius: 0 !important;
+  }
+  [vaul-drawer-wrapper][style*="transform"] {
+    transform: none !important;
+    width: 100% !important;
+    margin: 0 !important;
+  }
+}
