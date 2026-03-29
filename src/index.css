@@ -5,7 +5,7 @@
 :root {
   --vaul-drawer-wrapper-border-radius: 12px;
   --drawer-progress: 0;
-  --drawer-transition-duration: 0.5s;
+  --drawer-transition-duration: 1s;
 }
 
 /* Base wrapper styles for smooth transitions and starting border-radius */

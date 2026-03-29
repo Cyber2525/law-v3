@@ -89,7 +89,7 @@ export const StreamingModal: React.FC<StreamingModalProps> = ({ isOpen, onClose 
         setIsDismissable(false);
         const timer = setTimeout(() => {
             setIsDismissable(true);
-        }, 500);
+        }, 800);
         return () => clearTimeout(timer);
     }
   }, [isOpen]);
@@ -107,19 +107,19 @@ export const StreamingModal: React.FC<StreamingModalProps> = ({ isOpen, onClose 
         requestAnimationFrame(() => {
             requestAnimationFrame(() => {
                 // 3. Enable transition and animate to ending state
-                document.documentElement.style.setProperty('--drawer-transition-duration', '0.5s');
+                document.documentElement.style.setProperty('--drawer-transition-duration', '0.8s');
                 document.documentElement.style.setProperty('--drawer-progress', '1');
             });
         });
     } else {
         // Closing animation
-        document.documentElement.style.setProperty('--drawer-transition-duration', '0.5s');
+        document.documentElement.style.setProperty('--drawer-transition-duration', '0.8s');
         document.documentElement.style.setProperty('--drawer-progress', '0');
         
         timer = setTimeout(() => {
             document.documentElement.style.setProperty('--drawer-transition-duration', '0s');
             setActiveCategory(null);
-        }, 500);
+        }, 800);
     }
     
     return () => {
@@ -172,7 +172,7 @@ export const StreamingModal: React.FC<StreamingModalProps> = ({ isOpen, onClose 
   };
 
   const handleRelease = (e: React.PointerEvent<HTMLDivElement>, open: boolean) => {
-    document.documentElement.style.setProperty('--drawer-transition-duration', '0.5s');
+    document.documentElement.style.setProperty('--drawer-transition-duration', '0.8s');
     document.documentElement.style.setProperty('--drawer-progress', open ? '1' : '0');
   };
   // ------------------------------------------------
@@ -253,7 +253,7 @@ interface NavigationProps {
     isLandscape: boolean;
 }
 
-const TRANSITION_CLASSES = "all 600ms cubic-bezier(0.32,0.72,0,1)";
+const TRANSITION_CLASSES = "all 800ms cubic-bezier(0.32,0.72,0,1)";
 
 const IOSNavigationStack: React.FC<NavigationProps> = ({ activeCategory, onClose, onBack, onSelectCategory, isModalOpen, isDesktop, isLandscape }) => {
     const [menuHeight, setMenuHeight] = useState<number | undefined>(undefined);
@@ -583,12 +583,12 @@ const IOSNavigationStack: React.FC<NavigationProps> = ({ activeCategory, onClose
 
     return (
         <div className={`flex flex-col w-full relative ${!isDesktop ? 'h-full' : ''}`}>
-            <div className="absolute top-0 left-0 right-0 h-[70px] bg-[#F2F2F7]/70 dark:bg-[#1c1c1e]/70 backdrop-blur-xl z-20 border-b border-gray-200 dark:border-gray-800/50">
+            <div className="absolute top-0 left-0 right-0 h-[70px] bg-[#F2F2F7]/70 dark:bg-[#1c1c1e]/70 backdrop-blur-xl z-40 border-b border-gray-200 dark:border-gray-800/50">
                 {/* Back Button Area */}
                 <button 
                     onClick={onBack}
                     disabled={!activeCategory}
-                    className={`absolute top-0 left-0 h-full pl-4 pr-12 flex items-center text-[#007AFF] transition-all duration-300 active:opacity-50 z-30 ${
+                    className={`absolute top-0 left-0 h-full pl-4 pr-12 flex items-center text-[#007AFF] transition-all duration-300 active:opacity-50 z-50 ${
                         activeCategory ? 'opacity-100' : 'opacity-0 pointer-events-none'
                     }`}
                 >
@@ -619,7 +619,7 @@ const IOSNavigationStack: React.FC<NavigationProps> = ({ activeCategory, onClose
                 </div>
 
                 {/* Close Button Area */}
-                <div className="absolute top-0 right-0 h-full flex items-center pr-[15.5px] z-30">
+                <div className="absolute top-0 right-0 h-full flex items-center pr-[15.5px] z-50">
                     <button 
                         onClick={onClose}
                         className="bg-[#767680]/15 dark:bg-black/20 w-10 h-10 rounded-full flex items-center justify-center text-gray-500 dark:text-gray-400 hover:bg-[#767680]/25 dark:hover:bg-black/30 active:opacity-60 active:scale-90 transition-all duration-300 outline-none"
@@ -640,9 +640,14 @@ const IOSNavigationStack: React.FC<NavigationProps> = ({ activeCategory, onClose
             >
                 <div 
                     ref={categoriesRef}
-                    style={{ transition: navTransition }}
+                    style={{ 
+                        transition: navTransition,
+                        zIndex: activeCategory ? 10 : 20
+                    }}
                     className={`w-full transition-transform ${
-                        activeCategory ? '-translate-x-full pointer-events-none absolute top-0 h-full overflow-hidden' : 'translate-x-0 relative'
+                        activeCategory 
+                            ? '-translate-x-full pointer-events-none absolute top-0 min-h-full' 
+                            : 'translate-x-0 relative'
                     }`}
                 >
                     <div className="pb-8 pt-[86px]">
@@ -663,9 +668,14 @@ const IOSNavigationStack: React.FC<NavigationProps> = ({ activeCategory, onClose
 
                 <div 
                     ref={servicesRef}
-                    style={{ transition: navTransition }}
+                    style={{ 
+                        transition: navTransition,
+                        zIndex: activeCategory ? 20 : 10
+                    }}
                     className={`w-full transition-transform ${
-                        activeCategory ? 'translate-x-0 relative' : 'translate-x-full pointer-events-none absolute top-0 h-full overflow-hidden'
+                        activeCategory 
+                            ? 'translate-x-0 relative' 
+                            : 'translate-x-full pointer-events-none absolute top-0 min-h-full'
                     }`}
                 >
                     <div className="pb-8 pt-[86px]">

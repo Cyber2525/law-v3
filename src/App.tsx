@@ -27,10 +27,10 @@ const App: React.FC = () => {
     if (isOpen) {
       setIsAnimating(true);
     } else {
-      // Wait for the 0.5s transition to finish before showing the filler
+      // Wait for the 0.8s transition to finish before showing the filler
       const timer = setTimeout(() => {
         setIsAnimating(false);
-      }, 500);
+      }, 800);
       return () => clearTimeout(timer);
     }
   }, [risksModalOpen, streamingModalOpen]);
@@ -82,7 +82,7 @@ const App: React.FC = () => {
       // - Desde subpágina: 1.5s (permite limpiar navegación interna)
       // - Desde raíz: 0.5s (rápido, pero da feedback de cierre)
       setIsStreamingCooldown(true);
-      const cooldownTime = wasInSubpage ? 1500 : 500;
+      const cooldownTime = wasInSubpage ? 1500 : 800;
       setTimeout(() => setIsStreamingCooldown(false), cooldownTime);
 
       // 3. Limpiamos el historial de navegación interna del modal

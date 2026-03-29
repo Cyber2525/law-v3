@@ -273,7 +273,7 @@ export const RisksModal: React.FC<RisksModalProps> = ({ isOpen, onClose }) => {
         setIsDismissable(false);
         const timer = setTimeout(() => {
             setIsDismissable(true);
-        }, 500);
+        }, 1000);
         return () => clearTimeout(timer);
     }
   }, [isOpen]);
@@ -292,21 +292,21 @@ export const RisksModal: React.FC<RisksModalProps> = ({ isOpen, onClose }) => {
         requestAnimationFrame(() => {
             requestAnimationFrame(() => {
                 // 3. Enable transition and animate to ending state
-                document.documentElement.style.setProperty('--drawer-transition-duration', '0.5s');
+                document.documentElement.style.setProperty('--drawer-transition-duration', '1s');
                 document.documentElement.style.setProperty('--drawer-progress', '1');
             });
         });
     } else {
         // Closing animation
         // Ensure transition is enabled and animate back to starting state (0 progress)
-        document.documentElement.style.setProperty('--drawer-transition-duration', '0.5s');
+        document.documentElement.style.setProperty('--drawer-transition-duration', '1s');
         document.documentElement.style.setProperty('--drawer-progress', '0');
         
         // After the animation finishes, remove the transition duration so it jumps to 0px instantly
         // when Vaul removes the transform style.
         timer = setTimeout(() => {
             document.documentElement.style.setProperty('--drawer-transition-duration', '0s');
-        }, 500);
+        }, 1000);
     }
     
     return () => {
@@ -321,7 +321,7 @@ export const RisksModal: React.FC<RisksModalProps> = ({ isOpen, onClose }) => {
   };
 
   const handleRelease = (e: React.PointerEvent<HTMLDivElement>, open: boolean) => {
-    document.documentElement.style.setProperty('--drawer-transition-duration', '0.5s');
+    document.documentElement.style.setProperty('--drawer-transition-duration', '1s');
     document.documentElement.style.setProperty('--drawer-progress', open ? '1' : '0');
   };
 
