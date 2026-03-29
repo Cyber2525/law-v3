@@ -118,7 +118,7 @@ export const StreamingModal: React.FC<StreamingModalProps> = ({ isOpen, onClose 
         
         timer = setTimeout(() => {
             document.documentElement.style.setProperty('--drawer-transition-duration', '0s');
-            setActiveCategory(null);
+            // We don't clear activeCategory here anymore, we let the popstate handle it or do it on open
         }, 1000);
     }
     
@@ -224,7 +224,7 @@ export const StreamingModal: React.FC<StreamingModalProps> = ({ isOpen, onClose 
 
             <div className="absolute top-2 left-1/2 -translate-x-1/2 w-10 h-1.5 rounded-full bg-gray-300 dark:bg-gray-600 z-50 pointer-events-none opacity-80" />
 
-            <div className="flex-1 relative bg-[#F2F2F7] dark:bg-[#1c1c1e] rounded-t-[13px] landscape:rounded-t-[13px] landscape:rounded-b-none transform-gpu">
+            <div className="flex-1 relative bg-[#F2F2F7] dark:bg-[#1c1c1e] overflow-hidden rounded-t-[13px] landscape:rounded-t-[13px] landscape:rounded-b-none transform-gpu">
                  <IOSNavigationStack 
                     activeCategory={activeCategory}
                     onClose={handleManualClose}
@@ -253,7 +253,7 @@ interface NavigationProps {
     isLandscape: boolean;
 }
 
-const TRANSITION_CLASSES = "all 1000ms cubic-bezier(0.32,0.72,0,1)";
+const TRANSITION_CLASSES = "all 700ms cubic-bezier(0.32,0.72,0,1)";
 
 const IOSNavigationStack: React.FC<NavigationProps> = ({ activeCategory, onClose, onBack, onSelectCategory, isModalOpen, isDesktop, isLandscape }) => {
     const [menuHeight, setMenuHeight] = useState<number | undefined>(undefined);
@@ -261,9 +261,25 @@ const IOSNavigationStack: React.FC<NavigationProps> = ({ activeCategory, onClose
 
     const categoriesRef = useRef<HTMLDivElement>(null);
     const servicesRef = useRef<HTMLDivElement>(null);
+    const sliderRef = useRef<HTMLDivElement>(null);
     const contentWrapperRef = useRef<HTMLDivElement>(null);
 
     const [pendingService, setPendingService] = useState<Service | null>(null);
+
+    useEffect(() => {
+        if (activeCategory) {
+            setDisplayedCategory(activeCategory);
+        }
+    }, [activeCategory]);
+
+    // Reset scroll positions when category changes
+    useEffect(() => {
+        if (activeCategory && servicesRef.current) {
+            servicesRef.current.scrollTop = 0;
+        } else if (!activeCategory && categoriesRef.current) {
+            categoriesRef.current.scrollTop = 0;
+        }
+    }, [activeCategory]);
 
     useEffect(() => {
         const handlePopState = (e: PopStateEvent) => {
@@ -408,18 +424,6 @@ const IOSNavigationStack: React.FC<NavigationProps> = ({ activeCategory, onClose
     const isHorizontalSwipeRef = useRef<boolean | null>(null);
 
     useEffect(() => {
-        if (activeCategory) {
-            setDisplayedCategory(activeCategory);
-        }
-    }, [activeCategory]);
-
-    useEffect(() => {
-        if (contentWrapperRef.current) {
-            contentWrapperRef.current.scrollTop = 0;
-        }
-    }, [activeCategory]);
-
-    useEffect(() => {
         if (!isDesktop && !isLandscape) {
             setMenuHeight(undefined);
             return;
@@ -427,7 +431,8 @@ const IOSNavigationStack: React.FC<NavigationProps> = ({ activeCategory, onClose
         const updateHeight = () => {
             const currentRef = activeCategory ? servicesRef.current : categoriesRef.current;
             if (currentRef) {
-                const contentHeight = currentRef.offsetHeight;
+                // For separate scrollable containers, we might want a fixed height or dynamic
+                const contentHeight = currentRef.scrollHeight;
                 const maxHeight = window.innerHeight * (isDesktop ? 0.85 : 0.95);
                 setMenuHeight(Math.min(contentHeight, maxHeight));
             }
@@ -440,72 +445,85 @@ const IOSNavigationStack: React.FC<NavigationProps> = ({ activeCategory, onClose
         };
     }, [activeCategory, isDesktop, isLandscape]);
 
-    const onTouchStart = (e: React.TouchEvent) => {
+    const onPointerDown = (e: React.PointerEvent) => {
         if (!activeCategory) return;
-        touchStartX.current = e.touches[0].clientX;
-        touchStartY.current = e.touches[0].clientY;
-        previousMoveX.current = e.touches[0].clientX;
+        touchStartX.current = e.clientX;
+        touchStartY.current = e.clientY;
+        previousMoveX.current = e.clientX;
         lastDirectionRef.current = null;
         isHorizontalSwipeRef.current = null;
         isDraggingRef.current = true;
+        
+        if (sliderRef.current) {
+            sliderRef.current.style.transition = 'none';
+        }
     };
 
-    const onTouchMove = (e: React.TouchEvent) => {
+    const onPointerMove = (e: React.PointerEvent) => {
         if (!isDraggingRef.current || !activeCategory) return;
-        const currentX = e.touches[0].clientX;
-        const currentY = e.touches[0].clientY;
+        const currentX = e.clientX;
+        const currentY = e.clientY;
         const diffX = currentX - touchStartX.current;
         const diffY = currentY - touchStartY.current;
+
         if (isHorizontalSwipeRef.current === null) {
             const absX = Math.abs(diffX);
             const absY = Math.abs(diffY);
             if (absX > 5 || absY > 5) {
                 if (absX > absY) {
                     isHorizontalSwipeRef.current = true;
-                    if (categoriesRef.current) categoriesRef.current.style.transition = 'none';
-                    if (servicesRef.current) servicesRef.current.style.transition = 'none';
-                } else isHorizontalSwipeRef.current = false;
+                } else {
+                    isHorizontalSwipeRef.current = false;
+                }
             }
         }
-        if (isHorizontalSwipeRef.current === true) {
-             if (e.cancelable) e.stopPropagation();
-             if (diffX > 0) {
-                 if (currentX < previousMoveX.current) lastDirectionRef.current = 'left';
-                 else if (currentX > previousMoveX.current) lastDirectionRef.current = 'right';
-                 previousMoveX.current = currentX;
-                 if (servicesRef.current) servicesRef.current.style.transform = `translateX(${diffX}px)`;
-                 if (categoriesRef.current) {
-                     const scrollTop = contentWrapperRef.current?.scrollTop || 0;
-                     categoriesRef.current.style.transform = `translateX(calc(-100% + ${diffX}px)) translateY(${scrollTop}px)`;
-                 }
+
+        if (isHorizontalSwipeRef.current === true && sliderRef.current) {
+             if (e.cancelable) e.preventDefault();
+             
+             const containerWidth = sliderRef.current.offsetWidth / 2;
+             const baseOffset = -containerWidth; // We are in services (activeCategory is true)
+             let move = baseOffset + diffX;
+
+             // Resistance when swiping past limits
+             if (move > 0) {
+                 move *= 0.3; 
+             } else if (move < -containerWidth) {
+                 const extra = move - (-containerWidth);
+                 move = -containerWidth + (extra * 0.3);
              }
+
+             if (currentX < previousMoveX.current) lastDirectionRef.current = 'left';
+             else if (currentX > previousMoveX.current) lastDirectionRef.current = 'right';
+             previousMoveX.current = currentX;
+
+             sliderRef.current.style.transform = `translateX(${move}px)`;
         }
     };
 
-    const onTouchEnd = (e: React.TouchEvent) => {
+    const onPointerUp = (e: React.PointerEvent) => {
         if (!isDraggingRef.current || !activeCategory) return;
         isDraggingRef.current = false;
-        if (categoriesRef.current) categoriesRef.current.style.transition = TRANSITION_CLASSES;
-        if (servicesRef.current) servicesRef.current.style.transition = TRANSITION_CLASSES;
-        if (isHorizontalSwipeRef.current === true) {
-            const currentX = e.changedTouches[0].clientX;
-            const diffX = currentX - touchStartX.current;
-            const containerWidth = contentWrapperRef.current?.offsetWidth || window.innerWidth;
-            const threshold = containerWidth / 5;
-            const shouldGoBack = diffX > threshold && lastDirectionRef.current !== 'left';
-            if (shouldGoBack) {
-                onBack();
-                requestAnimationFrame(() => {
-                    if (categoriesRef.current) categoriesRef.current.style.transform = '';
-                    if (servicesRef.current) servicesRef.current.style.transform = '';
-                });
+        
+        if (sliderRef.current) {
+            sliderRef.current.style.transition = TRANSITION_CLASSES;
+
+            if (isHorizontalSwipeRef.current === true) {
+                const currentX = e.clientX;
+                const diffX = currentX - touchStartX.current;
+                const containerWidth = sliderRef.current.offsetWidth / 2;
+                const threshold = containerWidth * 0.2;
+
+                const shouldGoBack = diffX > threshold && lastDirectionRef.current !== 'left';
+                
+                if (shouldGoBack) {
+                    onBack();
+                } else {
+                    sliderRef.current.style.transform = 'translateX(-50%)';
+                }
             } else {
-                if (categoriesRef.current) categoriesRef.current.style.transform = '';
-                if (servicesRef.current) servicesRef.current.style.transform = '';
+                sliderRef.current.style.transform = 'translateX(-50%)';
             }
-        } else {
-            if (categoriesRef.current) categoriesRef.current.style.transform = '';
-            if (servicesRef.current) servicesRef.current.style.transform = '';
         }
         isHorizontalSwipeRef.current = null;
     };
@@ -632,20 +650,27 @@ const IOSNavigationStack: React.FC<NavigationProps> = ({ activeCategory, onClose
             <div 
                 ref={contentWrapperRef}
                 style={{ height: (isDesktop || isLandscape) ? (menuHeight ? `${menuHeight}px` : 'auto') : '100%' }} 
-                className={`relative w-full ${isDesktop || isLandscape ? 'max-h-[95vh]' : 'flex-1'} overflow-y-auto no-scrollbar transition-[height] ${isModalOpen ? 'duration-[1000ms]' : 'duration-0'} ease-[cubic-bezier(0.32,0.72,0,1)]`}
-                onTouchStart={onTouchStart}
-                onTouchMove={onTouchMove}
-                onTouchEnd={onTouchEnd}
+                className={`relative w-full ${isDesktop || isLandscape ? 'max-h-[95vh]' : 'flex-1'} overflow-hidden transition-[height] ${isModalOpen ? 'duration-[1000ms]' : 'duration-0'} ease-[cubic-bezier(0.32,0.72,0,1)]`}
+                onPointerDown={onPointerDown}
+                onPointerMove={onPointerMove}
+                onPointerUp={onPointerUp}
+                onPointerLeave={onPointerUp}
+                onPointerCancel={onPointerUp}
                 data-vaul-no-drag
             >
                 <div 
-                    ref={categoriesRef}
-                    style={{ transition: navTransition }}
-                    className={`w-full transition-transform ${
-                        activeCategory ? '-translate-x-full pointer-events-none absolute top-0 h-full' : 'translate-x-0 relative'
-                    }`}
+                    ref={sliderRef}
+                    style={{ 
+                        transition: navTransition,
+                        transform: activeCategory ? 'translateX(-50%)' : 'translateX(0%)',
+                        height: '100%'
+                    }}
+                    className="flex w-[200%] items-start touch-none select-none will-change-transform"
                 >
-                    <div className="pb-8 pt-[86px]">
+                    <div 
+                        ref={categoriesRef}
+                        className="w-[50%] h-full shrink-0 pb-8 pt-[86px] overflow-y-auto no-scrollbar touch-pan-y"
+                    >
                          <div className="px-4 mb-2">
                             <h3 className="text-[13px] text-gray-500 dark:text-gray-400 uppercase tracking-wide ml-4">Categorías</h3>
                         </div>
@@ -659,16 +684,11 @@ const IOSNavigationStack: React.FC<NavigationProps> = ({ activeCategory, onClose
                         </div>
                         <p className="px-8 mt-4 text-[13px] text-gray-400 dark:text-gray-500 text-center leading-normal">Selecciona una categoría para ver los servicios legales disponibles en tu región.</p>
                     </div>
-                </div>
 
-                <div 
-                    ref={servicesRef}
-                    style={{ transition: navTransition }}
-                    className={`w-full transition-transform ${
-                        activeCategory ? 'translate-x-0 relative' : 'translate-x-full pointer-events-none absolute top-0 h-full'
-                    }`}
-                >
-                    <div className="pb-8 pt-[86px]">
+                    <div 
+                        ref={servicesRef}
+                        className="w-[50%] h-full shrink-0 pb-8 pt-[86px] overflow-y-auto no-scrollbar touch-pan-y"
+                    >
                         {renderCategory && (() => {
                             const grouped: Record<string, Service[]> = {};
                             const sectionOrder: string[] = [];

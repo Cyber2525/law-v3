@@ -325,9 +325,9 @@ export const RisksModal: React.FC<RisksModalProps> = ({ isOpen, onClose }) => {
     document.documentElement.style.setProperty('--drawer-progress', open ? '1' : '0');
   };
 
-  const handleTouchStart = (e: React.TouchEvent) => {
-      touchStartXRef.current = e.touches[0].clientX;
-      touchStartYRef.current = e.touches[0].clientY;
+  const onPointerDown = (e: React.PointerEvent) => {
+      touchStartXRef.current = e.clientX;
+      touchStartYRef.current = e.clientY;
       isSwipingRef.current = null;
 
       if (sliderRef.current) {
@@ -335,21 +335,28 @@ export const RisksModal: React.FC<RisksModalProps> = ({ isOpen, onClose }) => {
       }
   };
 
-  const handleTouchMove = (e: React.TouchEvent) => {
-      const currentX = e.touches[0].clientX;
-      const currentY = e.touches[0].clientY;
+  const onPointerMove = (e: React.PointerEvent) => {
+      if (touchStartXRef.current === 0) return; // Not dragging
+      
+      const currentX = e.clientX;
+      const currentY = e.clientY;
       const diffX = currentX - touchStartXRef.current;
       const diffY = currentY - touchStartYRef.current;
 
       if (isSwipingRef.current === null) {
-          if (Math.abs(diffX) > Math.abs(diffY) && Math.abs(diffX) > 5) {
-              isSwipingRef.current = true;
-          } else if (Math.abs(diffY) > Math.abs(diffX) && Math.abs(diffY) > 5) {
-              isSwipingRef.current = false;
+          const absX = Math.abs(diffX);
+          const absY = Math.abs(diffY);
+          if (absX > 5 || absY > 5) {
+              if (absX > absY) {
+                  isSwipingRef.current = true;
+              } else {
+                  isSwipingRef.current = false;
+              }
           }
       }
 
       if (isSwipingRef.current === true && sliderRef.current) {
+          if (e.cancelable) e.preventDefault();
           const containerWidth = sliderRef.current.offsetWidth / 2;
           const baseOffset = activeSegment === 'legal' ? 0 : -containerWidth;
           let move = baseOffset + diffX;
@@ -365,12 +372,14 @@ export const RisksModal: React.FC<RisksModalProps> = ({ isOpen, onClose }) => {
       }
   };
 
-  const handleTouchEnd = (e: React.TouchEvent) => {
+  const onPointerUp = (e: React.PointerEvent) => {
+      if (touchStartXRef.current === 0) return;
+      
       if (sliderRef.current) {
-          sliderRef.current.style.transition = 'transform 0.8s cubic-bezier(0.32, 0.72, 0, 1)';
+          sliderRef.current.style.transition = 'transform 700ms cubic-bezier(0.32, 0.72, 0, 1)';
 
           if (isSwipingRef.current === true) {
-              const diffX = e.changedTouches[0].clientX - touchStartXRef.current;
+              const diffX = e.clientX - touchStartXRef.current;
               const containerWidth = sliderRef.current.offsetWidth / 2;
               const threshold = containerWidth * 0.25;
 
@@ -392,6 +401,7 @@ export const RisksModal: React.FC<RisksModalProps> = ({ isOpen, onClose }) => {
           }
       }
       isSwipingRef.current = null;
+      touchStartXRef.current = 0;
   };
 
   const containerClass = isDesktop 
@@ -399,8 +409,8 @@ export const RisksModal: React.FC<RisksModalProps> = ({ isOpen, onClose }) => {
     : "flex flex-col w-full h-full bg-[#F2F2F7] dark:bg-[#1c1c1e] relative";
 
   const scrollAreaClass = isDesktop
-    ? "w-full overflow-y-auto no-scrollbar" 
-    : "flex-1 overflow-y-auto no-scrollbar w-full";
+    ? "w-full overflow-hidden" 
+    : "flex-1 overflow-hidden w-full";
 
   const content = (
     <div className={containerClass}>
@@ -434,90 +444,90 @@ export const RisksModal: React.FC<RisksModalProps> = ({ isOpen, onClose }) => {
         {/* Scrollable Content Wrapper */}
         <div 
             className={scrollAreaClass}
-            onTouchStart={handleTouchStart}
-            onTouchMove={handleTouchMove}
-            onTouchEnd={handleTouchEnd}
+            onPointerDown={onPointerDown}
+            onPointerMove={onPointerMove}
+            onPointerUp={onPointerUp}
+            onPointerLeave={onPointerUp}
+            onPointerCancel={onPointerUp}
             data-vaul-no-drag
         >
-            <div className="h-[136px] shrink-0" />
-
             {/* Swipeable View Container */}
-            <div className="w-full">
-                <div 
-                    ref={sliderRef}
-                    className="flex w-[200%] transition-transform duration-1000 ease-[cubic-bezier(0.32,0.72,0,1)]"
-                    style={{
-                        transform: activeSegment === 'legal' ? 'translateX(0%)' : 'translateX(-50%)'
-                    }}
-                >
-                    {/* Left Slide: Legal */}
-                    <div className="w-[50%] px-4 pb-4">
-                        <h3 className="text-[13px] text-gray-500 dark:text-gray-400 uppercase tracking-wide pl-4 mb-2">
-                            Marco Legal y Sanciones
-                        </h3>
-                        <div className="bg-white dark:bg-[#2C2C2E] rounded-[12px] overflow-hidden">
-                            {LEGAL_RISKS.map((item, index, arr) => (
-                                <div key={index} className="relative">
-                                    <div className="p-4 flex items-start space-x-4">
-                                        <div className={`shrink-0 w-10 h-10 rounded-lg ${item.color} flex items-center justify-center mt-0.5`}>
-                                            {item.icon}
-                                        </div>
-                                        <div className="flex-1">
-                                            <h4 className="text-[17px] font-semibold text-gray-900 dark:text-white mb-1">
-                                                {item.title}
-                                            </h4>
-                                            <p className="text-[15px] text-gray-500 dark:text-gray-400 leading-snug">
-                                                {item.description}
-                                            </p>
-                                        </div>
+            <div 
+                ref={sliderRef}
+                className="flex w-[200%] h-full transition-transform duration-700 ease-[cubic-bezier(0.32,0.72,0,1)] will-change-transform touch-none select-none"
+                style={{
+                    transform: activeSegment === 'legal' ? 'translateX(0%)' : 'translateX(-50%)'
+                }}
+            >
+                {/* Left Slide: Legal */}
+                <div className="w-[50%] h-full overflow-y-auto no-scrollbar px-4 pb-4 touch-pan-y">
+                    <div className="h-[136px] shrink-0" />
+                    <h3 className="text-[13px] text-gray-500 dark:text-gray-400 uppercase tracking-wide pl-4 mb-2">
+                        Marco Legal y Sanciones
+                    </h3>
+                    <div className="bg-white dark:bg-[#2C2C2E] rounded-[12px] overflow-hidden">
+                        {LEGAL_RISKS.map((item, index, arr) => (
+                            <div key={index} className="relative">
+                                <div className="p-4 flex items-start space-x-4">
+                                    <div className={`shrink-0 w-10 h-10 rounded-lg ${item.color} flex items-center justify-center mt-0.5`}>
+                                        {item.icon}
                                     </div>
-                                    {index < arr.length - 1 && (
-                                        <div className="absolute bottom-0 left-[72px] right-0 h-[1px] bg-gray-200 dark:bg-gray-700/60" />
-                                    )}
+                                    <div className="flex-1">
+                                        <h4 className="text-[17px] font-semibold text-gray-900 dark:text-white mb-1">
+                                            {item.title}
+                                        </h4>
+                                        <p className="text-[15px] text-gray-500 dark:text-gray-400 leading-snug">
+                                            {item.description}
+                                        </p>
+                                    </div>
                                 </div>
-                            ))}
-                        </div>
-                         <div className="mt-6 flex items-start gap-3 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-xl">
-                            <Info className="w-5 h-5 text-blue-600 dark:text-blue-400 shrink-0 mt-0.5" />
-                            <p className="text-[13px] text-blue-700 dark:text-blue-300 leading-normal">
-                                La legislación actual permite el cierre cautelar de páginas web sin necesidad de identificar al usuario final, pero el registro de IPs permanece.
-                            </p>
-                        </div>
+                                {index < arr.length - 1 && (
+                                    <div className="absolute bottom-0 left-[72px] right-0 h-[1px] bg-gray-200 dark:bg-gray-700/60" />
+                                )}
+                            </div>
+                        ))}
                     </div>
+                     <div className="mt-6 flex items-start gap-3 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-xl">
+                        <Info className="w-5 h-5 text-blue-600 dark:text-blue-400 shrink-0 mt-0.5" />
+                        <p className="text-[13px] text-blue-700 dark:text-blue-300 leading-normal">
+                            La legislación actual permite el cierre cautelar de páginas web sin necesidad de identificar al usuario final, pero el registro de IPs permanece.
+                        </p>
+                    </div>
+                </div>
 
-                    {/* Right Slide: Security */}
-                    <div className="w-[50%] px-4 pb-4">
-                         <h3 className="text-[13px] text-gray-500 dark:text-gray-400 uppercase tracking-wide pl-4 mb-2">
-                            Amenazas Técnicas
-                        </h3>
-                        <div className="bg-white dark:bg-[#2C2C2E] rounded-[12px] overflow-hidden">
-                            {SECURITY_RISKS.map((item, index, arr) => (
-                                <div key={index} className="relative">
-                                    <div className="p-4 flex items-start space-x-4">
-                                        <div className={`shrink-0 w-10 h-10 rounded-lg ${item.color} flex items-center justify-center mt-0.5`}>
-                                            {item.icon}
-                                        </div>
-                                        <div className="flex-1">
-                                            <h4 className="text-[17px] font-semibold text-gray-900 dark:text-white mb-1">
-                                                {item.title}
-                                            </h4>
-                                            <p className="text-[15px] text-gray-500 dark:text-gray-400 leading-snug">
-                                                {item.description}
-                                            </p>
-                                        </div>
+                {/* Right Slide: Security */}
+                <div className="w-[50%] h-full overflow-y-auto no-scrollbar px-4 pb-4 touch-pan-y">
+                    <div className="h-[136px] shrink-0" />
+                     <h3 className="text-[13px] text-gray-500 dark:text-gray-400 uppercase tracking-wide pl-4 mb-2">
+                        Amenazas Técnicas
+                    </h3>
+                    <div className="bg-white dark:bg-[#2C2C2E] rounded-[12px] overflow-hidden">
+                        {SECURITY_RISKS.map((item, index, arr) => (
+                            <div key={index} className="relative">
+                                <div className="p-4 flex items-start space-x-4">
+                                    <div className={`shrink-0 w-10 h-10 rounded-lg ${item.color} flex items-center justify-center mt-0.5`}>
+                                        {item.icon}
                                     </div>
-                                    {index < arr.length - 1 && (
-                                        <div className="absolute bottom-0 left-[72px] right-0 h-[1px] bg-gray-200 dark:bg-gray-700/60" />
-                                    )}
+                                    <div className="flex-1">
+                                        <h4 className="text-[17px] font-semibold text-gray-900 dark:text-white mb-1">
+                                            {item.title}
+                                        </h4>
+                                        <p className="text-[15px] text-gray-500 dark:text-gray-400 leading-snug">
+                                            {item.description}
+                                        </p>
+                                    </div>
                                 </div>
-                            ))}
-                        </div>
-                        <div className="mt-6 flex items-start gap-3 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-xl">
-                            <Info className="w-5 h-5 text-blue-600 dark:text-blue-400 shrink-0 mt-0.5" />
-                            <p className="text-[13px] text-blue-700 dark:text-blue-300 leading-normal">
-                                El uso de VPNs gratuitas no garantiza la seguridad ante malware incrustado en los reproductores de video de estos sitios.
-                            </p>
-                        </div>
+                                {index < arr.length - 1 && (
+                                    <div className="absolute bottom-0 left-[72px] right-0 h-[1px] bg-gray-200 dark:bg-gray-700/60" />
+                                )}
+                            </div>
+                        ))}
+                    </div>
+                    <div className="mt-6 flex items-start gap-3 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-xl">
+                        <Info className="w-5 h-5 text-blue-600 dark:text-blue-400 shrink-0 mt-0.5" />
+                        <p className="text-[13px] text-blue-700 dark:text-blue-300 leading-normal">
+                            El uso de VPNs gratuitas no garantiza la seguridad ante malware incrustado en los reproductores de video de estos sitios.
+                        </p>
                     </div>
                 </div>
             </div>
