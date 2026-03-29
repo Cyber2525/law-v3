@@ -27,10 +27,10 @@ const App: React.FC = () => {
     if (isOpen) {
       setIsAnimating(true);
     } else {
-      // Wait for the 1s transition to finish before showing the filler
+      // Wait for the 3s transition to finish before showing the filler
       const timer = setTimeout(() => {
         setIsAnimating(false);
-      }, 1000);
+      }, 3000);
       return () => clearTimeout(timer);
     }
   }, [risksModalOpen, streamingModalOpen]);

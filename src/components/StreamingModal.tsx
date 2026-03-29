@@ -107,19 +107,19 @@ export const StreamingModal: React.FC<StreamingModalProps> = ({ isOpen, onClose 
         requestAnimationFrame(() => {
             requestAnimationFrame(() => {
                 // 3. Enable transition and animate to ending state
-                document.documentElement.style.setProperty('--drawer-transition-duration', '1s');
+                document.documentElement.style.setProperty('--drawer-transition-duration', '0.8s');
                 document.documentElement.style.setProperty('--drawer-progress', '1');
             });
         });
     } else {
         // Closing animation
-        document.documentElement.style.setProperty('--drawer-transition-duration', '1s');
+        document.documentElement.style.setProperty('--drawer-transition-duration', '0.8s');
         document.documentElement.style.setProperty('--drawer-progress', '0');
         
         timer = setTimeout(() => {
             document.documentElement.style.setProperty('--drawer-transition-duration', '0s');
             // We don't clear activeCategory here anymore, we let the popstate handle it or do it on open
-        }, 1000);
+        }, 800);
     }
     
     return () => {
@@ -172,7 +172,7 @@ export const StreamingModal: React.FC<StreamingModalProps> = ({ isOpen, onClose 
   };
 
   const handleRelease = (e: React.PointerEvent<HTMLDivElement>, open: boolean) => {
-    document.documentElement.style.setProperty('--drawer-transition-duration', '1s');
+    document.documentElement.style.setProperty('--drawer-transition-duration', '0.8s');
     document.documentElement.style.setProperty('--drawer-progress', open ? '1' : '0');
   };
   // ------------------------------------------------
