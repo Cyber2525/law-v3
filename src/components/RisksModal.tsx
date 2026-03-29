@@ -395,8 +395,8 @@ export const RisksModal: React.FC<RisksModalProps> = ({ isOpen, onClose }) => {
   };
 
   const containerClass = isDesktop 
-    ? "flex flex-col w-full bg-[#F2F2F7] dark:bg-[#1c1c1e] relative overflow-hidden h-auto" 
-    : "flex flex-col w-full h-full bg-[#F2F2F7] dark:bg-[#1c1c1e] relative overflow-hidden";
+    ? "flex flex-col w-full bg-[#F2F2F7] dark:bg-[#1c1c1e] relative h-auto" 
+    : "flex flex-col w-full h-full bg-[#F2F2F7] dark:bg-[#1c1c1e] relative";
 
   const scrollAreaClass = isDesktop
     ? "w-full overflow-y-auto no-scrollbar" 
@@ -442,10 +442,10 @@ export const RisksModal: React.FC<RisksModalProps> = ({ isOpen, onClose }) => {
             <div className="h-[136px] shrink-0" />
 
             {/* Swipeable View Container */}
-            <div className="w-full overflow-hidden">
+            <div className="w-full">
                 <div 
                     ref={sliderRef}
-                    className="flex w-[200%] transition-transform duration-500 ease-[cubic-bezier(0.32,0.72,0,1)]"
+                    className="flex w-[200%] transition-transform duration-1000 ease-[cubic-bezier(0.32,0.72,0,1)]"
                     style={{
                         transform: activeSegment === 'legal' ? 'translateX(0%)' : 'translateX(-50%)'
                     }}
@@ -550,7 +550,7 @@ export const RisksModal: React.FC<RisksModalProps> = ({ isOpen, onClose }) => {
     >
       <Drawer.Portal>
         <Drawer.Overlay 
-          className="fixed inset-0 bg-black/[0.13] z-50 transition-opacity duration-[800ms]"
+          className="fixed inset-0 bg-black/[0.13] z-50 transition-opacity duration-[1000ms]"
         />
         <Drawer.Content className="bg-[#F2F2F7] dark:bg-[#1c1c1e] flex flex-col rounded-t-[13px] fixed bottom-0 left-0 right-0 z-50 outline-none shadow-2xl h-[calc(90.7vh-0.84px)] landscape:rounded-t-[13px] landscape:rounded-b-none landscape:left-[19px] landscape:right-[19px] landscape:bottom-0 landscape:mx-auto landscape:max-w-lg">
             

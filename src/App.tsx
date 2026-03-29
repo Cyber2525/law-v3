@@ -27,10 +27,10 @@ const App: React.FC = () => {
     if (isOpen) {
       setIsAnimating(true);
     } else {
-      // Wait for the 0.8s transition to finish before showing the filler
+      // Wait for the 1s transition to finish before showing the filler
       const timer = setTimeout(() => {
         setIsAnimating(false);
-      }, 800);
+      }, 1000);
       return () => clearTimeout(timer);
     }
   }, [risksModalOpen, streamingModalOpen]);
@@ -80,9 +80,9 @@ const App: React.FC = () => {
       
       // 2. Activamos el cooldown SIEMPRE para dar feedback visual y bloqueo en el botón.
       // - Desde subpágina: 1.5s (permite limpiar navegación interna)
-      // - Desde raíz: 0.5s (rápido, pero da feedback de cierre)
+      // - Desde raíz: 1s (rápido, pero da feedback de cierre)
       setIsStreamingCooldown(true);
-      const cooldownTime = wasInSubpage ? 1500 : 800;
+      const cooldownTime = wasInSubpage ? 1500 : 1000;
       setTimeout(() => setIsStreamingCooldown(false), cooldownTime);
 
       // 3. Limpiamos el historial de navegación interna del modal
