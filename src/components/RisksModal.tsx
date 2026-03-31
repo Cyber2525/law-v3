@@ -294,7 +294,7 @@ export const RisksModal: React.FC<RisksModalProps> = ({ isOpen, onClose }) => {
         setIsDismissable(false);
         const timer = setTimeout(() => {
             setIsDismissable(true);
-        }, 600);
+        }, 900);
         return () => clearTimeout(timer);
     }
   }, [isOpen]);
@@ -305,7 +305,7 @@ export const RisksModal: React.FC<RisksModalProps> = ({ isOpen, onClose }) => {
     if (!isOpen) {
       const timer = setTimeout(() => {
         setActiveSegment('legal');
-      }, 500);
+      }, 800);
       return () => clearTimeout(timer);
     }
   }, [isOpen]);
@@ -343,7 +343,7 @@ export const RisksModal: React.FC<RisksModalProps> = ({ isOpen, onClose }) => {
 
   const handleRelease = (e: React.PointerEvent<HTMLDivElement>, open: boolean) => {
     document.documentElement.removeAttribute('data-drawer-dragging');
-    document.documentElement.style.setProperty('--drawer-transition-duration', '0.5s');
+    document.documentElement.style.setProperty('--drawer-transition-duration', '0.8s');
     document.documentElement.style.setProperty('--drawer-progress', open ? '1' : '0');
   };
 
@@ -414,7 +414,7 @@ export const RisksModal: React.FC<RisksModalProps> = ({ isOpen, onClose }) => {
       try { (e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId); } catch(err) {}
       
       if (sliderRef.current) {
-          sliderRef.current.style.transition = 'transform 500ms cubic-bezier(0.32, 0.72, 0, 1)';
+          sliderRef.current.style.transition = 'transform 800ms cubic-bezier(0.32, 0.72, 0, 1)';
 
           if (isSwipingRef.current === true) {
               const diffX = e.clientX - touchStartXRef.current;
@@ -501,7 +501,7 @@ export const RisksModal: React.FC<RisksModalProps> = ({ isOpen, onClose }) => {
             {/* Swipeable View Container */}
             <div 
                 ref={sliderRef}
-                className="flex w-[200%] h-full transition-transform duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] will-change-transform touch-none select-none"
+                className="flex w-[200%] h-full transition-transform duration-800 ease-[cubic-bezier(0.32,0.72,0,1)] will-change-transform touch-none select-none"
                 style={{
                     transform: activeSegment === 'legal' ? 'translateX(0%)' : 'translateX(-50%)'
                 }}
@@ -600,14 +600,14 @@ export const RisksModal: React.FC<RisksModalProps> = ({ isOpen, onClose }) => {
 
   if (isDesktop) {
     return (
-      <div className={`fixed inset-0 z-50 flex items-center justify-center p-4 ${isOpen ? 'visible' : 'invisible delay-[500ms] pointer-events-none'}`}>
+      <div className={`fixed inset-0 z-50 flex items-center justify-center p-4 ${isOpen ? 'visible' : 'invisible delay-[800ms] pointer-events-none'}`}>
         <div 
-            className={`absolute inset-0 bg-black/[0.13] transition-all duration-[500ms] ease-[cubic-bezier(0.32,0.72,0,1)] ${isOpen ? 'opacity-100' : 'opacity-0'}`}
+            className={`absolute inset-0 bg-black/[0.13] transition-all duration-[800ms] ease-[cubic-bezier(0.32,0.72,0,1)] ${isOpen ? 'opacity-100' : 'opacity-0'}`}
             onClick={onClose}
         />
         <div 
             style={{ height: isDesktop ? (menuHeight ? `${menuHeight}px` : 'auto') : '100%' }}
-            className={`relative w-[480px] ${isDesktop ? 'max-h-[85vh]' : 'h-[85vh]'} flex flex-col overflow-hidden isolation-isolate bg-[#F2F2F7]/70 dark:bg-[#1c1c1e]/70 rounded-[16px] shadow-2xl transform transition-all duration-[500ms] ease-[cubic-bezier(0.32,0.72,0,1)] ${isOpen ? 'translate-y-0' : 'translate-y-[100vh]'} transition-[height]`}
+            className={`relative w-[480px] ${isDesktop ? 'max-h-[85vh]' : 'h-[85vh]'} flex flex-col overflow-hidden isolation-isolate bg-[#F2F2F7]/70 dark:bg-[#1c1c1e]/70 rounded-[16px] shadow-2xl transform transition-all duration-[800ms] ease-[cubic-bezier(0.32,0.72,0,1)] ${isOpen ? 'translate-y-0' : 'translate-y-[100vh]'} transition-[height]`}
         >
             {content}
         </div>
@@ -626,7 +626,7 @@ export const RisksModal: React.FC<RisksModalProps> = ({ isOpen, onClose }) => {
     >
       <Drawer.Portal>
         <Drawer.Overlay 
-          className="fixed inset-0 bg-black/[0.13] z-50 transition-opacity duration-[500ms]"
+          className="fixed inset-0 bg-black/[0.13] z-50 transition-opacity duration-[800ms]"
         />
         <Drawer.Content className="bg-[#F2F2F7] dark:bg-[#1E1E20] flex flex-col rounded-t-[13px] fixed bottom-0 left-0 right-0 z-50 outline-none shadow-2xl h-[calc(90.7vh-0.84px)] landscape:rounded-t-[13px] landscape:rounded-b-none landscape:left-[19px] landscape:right-[19px] landscape:bottom-0 landscape:mx-auto landscape:max-w-lg">
             

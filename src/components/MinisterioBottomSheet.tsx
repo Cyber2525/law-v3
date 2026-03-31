@@ -39,7 +39,7 @@ export const MinisterioBottomSheet: React.FC<MinisterioBottomSheetProps> = ({ is
       setIsDismissable(false);
       const timer = setTimeout(() => {
         setIsDismissable(true);
-      }, 600);
+      }, 900);
       return () => clearTimeout(timer);
     }
   }, [isOpen]);
@@ -51,7 +51,7 @@ export const MinisterioBottomSheet: React.FC<MinisterioBottomSheetProps> = ({ is
 
   const handleRelease = (e: React.PointerEvent<HTMLDivElement>, open: boolean) => {
     document.documentElement.removeAttribute('data-drawer-dragging');
-    document.documentElement.style.setProperty('--drawer-transition-duration', '0.5s');
+    document.documentElement.style.setProperty('--drawer-transition-duration', '0.8s');
   };
 
   const handleWeb = () => {
@@ -140,11 +140,11 @@ export const MinisterioBottomSheet: React.FC<MinisterioBottomSheetProps> = ({ is
     return (
       <div className={`fixed inset-0 z-50 flex items-center justify-center p-4 ${isOpen ? 'visible' : 'invisible delay-[800ms] pointer-events-none'}`}>
         <div 
-            className={`absolute inset-0 bg-black/[0.13] transition-all duration-[500ms] ease-[cubic-bezier(0.32,0.72,0,1)] ${isOpen ? 'opacity-100' : 'opacity-0'}`}
+            className={`absolute inset-0 bg-black/[0.13] transition-all duration-[800ms] ease-[cubic-bezier(0.32,0.72,0,1)] ${isOpen ? 'opacity-100' : 'opacity-0'}`}
             onClick={onClose}
         />
         <div 
-          className={`relative w-[480px] max-h-[85vh] flex flex-col overflow-hidden isolation-isolate bg-[#f2f2f7]/70 dark:bg-[#1c1c1e]/70 rounded-[16px] shadow-2xl transform transition-all duration-[500ms] ease-[cubic-bezier(0.32,0.72,0,1)] ${isOpen ? 'translate-y-0' : 'translate-y-[100vh]'}`}
+          className={`relative w-[480px] max-h-[85vh] flex flex-col overflow-hidden isolation-isolate bg-[#f2f2f7]/70 dark:bg-[#1c1c1e]/70 rounded-[16px] shadow-2xl transform transition-all duration-[800ms] ease-[cubic-bezier(0.32,0.72,0,1)] ${isOpen ? 'translate-y-0' : 'translate-y-[100vh]'}`}
         >
           <Content />
         </div>
