@@ -46,7 +46,7 @@ export const IOSNavBar: React.FC<IOSNavBarProps> = ({
   const isDeep = !!childTitle;
 
   return (
-    <div className="relative h-[70px] flex items-center justify-between pl-4 pr-[15.5px] shrink-0 bg-[#F2F2F7]/90 dark:bg-[#1c1c1e]/90 backdrop-blur-xl z-20 border-b border-gray-200 dark:border-gray-800/50 select-none transition-colors duration-1000">
+    <div className="relative h-[70px] flex items-center justify-between pl-4 pr-[15.5px] shrink-0 bg-[#F2F2F7]/90 dark:bg-[rgba(24,24,26,0.70)] backdrop-blur-xl z-20 select-none transition-colors duration-1000 border-b border-black/10 dark:border-black/30">
       
       {/* Zona Izquierda: Botón Atrás */}
       <div className="flex-1 flex justify-start min-w-[80px]">
@@ -85,7 +85,7 @@ export const IOSNavBar: React.FC<IOSNavBarProps> = ({
         {showCloseButton && (
           <button 
             onClick={onClose}
-            className="bg-[#E5E5EA] dark:bg-[#303032] w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center text-gray-500 dark:text-gray-400 hover:bg-gray-300 dark:hover:bg-gray-600 active:opacity-60 active:scale-90 transition-all duration-1000 outline-none"
+            className="bg-[rgba(235,235,235,0.70)] dark:bg-[rgba(44,44,46,0.70)] backdrop-blur-xl w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center text-gray-500 dark:text-gray-400 hover:bg-gray-300/50 dark:hover:bg-white/10 active:opacity-60 active:scale-90 transition-all duration-1000 outline-none"
           >
             <X className="w-5 h-5 sm:w-6 sm:h-6" strokeWidth={2.5} />
           </button>

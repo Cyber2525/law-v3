@@ -88,6 +88,7 @@ export const IOSAlert: React.FC<IOSAlertProps> = ({
   // --- Pointer Handlers (iOS Pull-down Style) ---
   const handlePointerDown = (e: React.PointerEvent) => {
       setIsSliding(false);
+      (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
       const target = e.target as HTMLElement;
       const button = target.closest('button[data-action-index]');
       if (button) {
@@ -116,6 +117,7 @@ export const IOSAlert: React.FC<IOSAlertProps> = ({
   };
 
   const handlePointerUp = (e: React.PointerEvent) => {
+      try { (e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId); } catch(err) {}
       if (highlightedIndex !== null) {
           const action = snapshot.actions[highlightedIndex];
           if (action) {
@@ -123,6 +125,12 @@ export const IOSAlert: React.FC<IOSAlertProps> = ({
               setTimeout(() => action.onClick(), 50);
           }
       }
+      setHighlightedIndex(null);
+      setIsSliding(false);
+  };
+
+  const handlePointerCancel = (e: React.PointerEvent) => {
+      try { (e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId); } catch(err) {}
       setHighlightedIndex(null);
       setIsSliding(false);
   };
@@ -155,11 +163,11 @@ export const IOSAlert: React.FC<IOSAlertProps> = ({
        />
 
        <div 
-          className={`relative w-[270px] bg-[rgba(255,255,255,0.85)] dark:bg-[rgba(30,30,30,0.80)] backdrop-blur-xl backdrop-saturate-[180%] rounded-[14px] overflow-hidden gpu-accelerated text-center z-10 border border-black/5 dark:border-white/10 dark:shadow-[0_0_15px_rgba(0,0,0,0.3)] ${animationClass}`}
+          className={`relative w-[270px] bg-[rgba(245,245,245,0.80)] dark:bg-[rgba(48,48,50,0.80)] backdrop-blur-xl backdrop-saturate-[180%] rounded-[14px] overflow-hidden gpu-accelerated text-center z-10 ${animationClass}`}
           onClick={stopPropagation}
         >
          
-         <div className="pt-[19px] pb-[19px] px-4 border-b border-gray-400/30 dark:border-white/10">
+         <div className="pt-[19px] pb-[19px] px-4">
            {displayTitle && (
              <h3 className="text-[17px] font-semibold text-black dark:text-white mb-1 leading-snug">
                {displayTitle}
@@ -175,7 +183,7 @@ export const IOSAlert: React.FC<IOSAlertProps> = ({
             onPointerDown={handlePointerDown}
             onPointerMove={handlePointerMove}
             onPointerUp={handlePointerUp}
-            onPointerCancel={() => { setHighlightedIndex(null); setIsSliding(false); }}
+            onPointerCancel={handlePointerCancel}
             className={`w-full touch-none select-none ${isVertical ? 'flex flex-col' : 'grid grid-cols-2 h-[44px]'}`}
          >
             {displayActions.map((action, idx) => {
@@ -186,13 +194,22 @@ export const IOSAlert: React.FC<IOSAlertProps> = ({
                 const isHighlighted = highlightedIndex === idx;
                 
                 let borderClass = '';
+                const borderColor = 'border-black/10 dark:border-white/10';
+                
                 if (isVertical) {
-                    if (idx < displayActions.length - 1) {
-                        borderClass = 'border-b border-gray-400/30 dark:border-white/10';
-                    }
+                    const isPrevHighlighted = idx > 0 && highlightedIndex === idx - 1;
+                    const hideTop = isHighlighted || isPrevHighlighted;
+                    borderClass = `border-t ${hideTop ? 'border-transparent' : borderColor}`;
                 } else {
+                    const hideTop = isHighlighted;
+                    const topBorder = `border-t ${hideTop ? 'border-transparent' : borderColor}`;
+                    
                     if (idx === 0) {
-                        borderClass = 'border-r border-gray-400/30 dark:border-white/10';
+                        const hideRight = highlightedIndex !== null;
+                        const rightBorder = `border-r ${hideRight ? 'border-transparent' : borderColor}`;
+                        borderClass = `${topBorder} ${rightBorder}`;
+                    } else {
+                        borderClass = topBorder;
                     }
                 }
 

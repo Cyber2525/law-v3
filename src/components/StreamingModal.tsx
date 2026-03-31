@@ -32,35 +32,60 @@ interface IOSListItemProps {
     icon: React.ReactNode;
     label: string;
     onClick: () => void;
+    onPointerDown?: () => void;
+    onPointerUp?: () => void;
+    onPointerCancel?: () => void;
     showChevron?: boolean;
     external?: boolean;
     actionLabel?: string;
 }
 
-const IOSListItem: React.FC<IOSListItemProps> = ({ icon, label, onClick, showChevron, external, actionLabel }) => {
+const IOSListItem: React.FC<IOSListItemProps> = ({ icon, label, onClick, onPointerDown, onPointerUp, onPointerCancel, showChevron, external, actionLabel }) => {
     const isWeb = actionLabel === 'Web';
     const textColor = isWeb ? 'text-gray-400 dark:text-gray-500' : 'text-blue-500';
+    const [isPressed, setIsPressed] = useState(false);
 
     return (
-        <button 
-            onClick={onClick}
-            className="w-full flex items-center justify-between p-3 pl-4 min-h-[50px] active:bg-gray-100 dark:active:bg-[#323234] transition-colors"
-        >
-            <div className="flex items-center gap-3">
-                {icon}
-                <span className="text-[17px] text-gray-900 dark:text-white font-normal">
-                    {label}
-                </span>
-            </div>
-            <div className="flex items-center gap-1 pr-1">
-                {external && (
-                    <span className={`text-[15px] mr-1 ${textColor}`}>{actionLabel || 'Abrir'}</span>
-                )}
-                {(showChevron || external) && (
-                    external ? <ExternalLink className={`w-4 h-4 ${textColor}`} /> : <ChevronRight className="w-5 h-5 text-gray-300 dark:text-gray-600" strokeWidth={2} />
-                )}
-            </div>
-        </button>
+        <div className="relative">
+            <button 
+                onClick={onClick}
+                onPointerDown={(e) => {
+                    e.currentTarget.setPointerCapture(e.pointerId);
+                    setIsPressed(true);
+                    onPointerDown?.();
+                }}
+                onPointerUp={(e) => {
+                    if (e.currentTarget.hasPointerCapture(e.pointerId)) {
+                        e.currentTarget.releasePointerCapture(e.pointerId);
+                    }
+                    setIsPressed(false);
+                    onPointerUp?.();
+                }}
+                onPointerCancel={(e) => {
+                    if (e.currentTarget.hasPointerCapture(e.pointerId)) {
+                        e.currentTarget.releasePointerCapture(e.pointerId);
+                    }
+                    setIsPressed(false);
+                    onPointerCancel?.();
+                }}
+                className={`w-full flex items-center justify-between p-3 pl-4 min-h-[50px] select-none transition-colors ${isPressed ? 'bg-gray-100 dark:bg-[#323234]' : ''}`}
+            >
+                <div className="flex items-center gap-3">
+                    {icon}
+                    <span className="text-[17px] text-gray-900 dark:text-white font-normal">
+                        {label}
+                    </span>
+                </div>
+                <div className="flex items-center gap-1 pr-1">
+                    {external && (
+                        <span className={`text-[15px] mr-1 ${textColor}`}>{actionLabel || 'Abrir'}</span>
+                    )}
+                    {(showChevron || external) && (
+                        external ? <ExternalLink className={`w-4 h-4 ${textColor}`} /> : <ChevronRight className="w-5 h-5 text-gray-300 dark:text-gray-600" strokeWidth={2} />
+                    )}
+                </div>
+            </button>
+        </div>
     );
 };
 
@@ -76,6 +101,23 @@ export const StreamingModal: React.FC<StreamingModalProps> = ({ isOpen, onClose 
   const isLandscape = useMediaQuery('(orientation: landscape)');
   const [activeCategory, setActiveCategory] = useState<CategoryData | null>(null);
   const [isDismissable, setIsDismissable] = useState(false);
+  const [scrollProgress, setScrollProgress] = useState(0);
+  const [isDarkMode, setIsDarkMode] = useState(false);
+
+  useEffect(() => {
+    const checkDark = () => setIsDarkMode(document.documentElement.classList.contains('dark'));
+    checkDark();
+    const observer = new MutationObserver(checkDark);
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
+    return () => observer.disconnect();
+  }, []);
+
+  // Reset scroll progress when modal opens
+  useEffect(() => {
+    if (isOpen) {
+      setScrollProgress(0);
+    }
+  }, [isOpen]);
 
   // Usamos una referencia para saber si el componente debe ignorar popstates visuales
   const isOpenRef = useRef(isOpen);
@@ -89,42 +131,19 @@ export const StreamingModal: React.FC<StreamingModalProps> = ({ isOpen, onClose 
         setIsDismissable(false);
         const timer = setTimeout(() => {
             setIsDismissable(true);
-        }, 1000);
+        }, 600);
         return () => clearTimeout(timer);
     }
   }, [isOpen]);
   
   // RESET INSTANTÁNEO AL CERRAR (Solo cuando termina la animación)
   useEffect(() => {
-    let timer: ReturnType<typeof setTimeout>;
-    
-    if (isOpen) {
-        // 1. Prepare starting state (0 progress, 0s transition)
-        document.documentElement.style.setProperty('--drawer-transition-duration', '0s');
-        document.documentElement.style.setProperty('--drawer-progress', '0');
-        
-        // 2. Wait for Vaul to mount and apply its transform style
-        requestAnimationFrame(() => {
-            requestAnimationFrame(() => {
-                // 3. Enable transition and animate to ending state
-                document.documentElement.style.setProperty('--drawer-transition-duration', '0.8s');
-                document.documentElement.style.setProperty('--drawer-progress', '1');
-            });
-        });
-    } else {
-        // Closing animation
-        document.documentElement.style.setProperty('--drawer-transition-duration', '0.8s');
-        document.documentElement.style.setProperty('--drawer-progress', '0');
-        
-        timer = setTimeout(() => {
-            document.documentElement.style.setProperty('--drawer-transition-duration', '0s');
-            // We don't clear activeCategory here anymore, we let the popstate handle it or do it on open
-        }, 800);
+    if (!isOpen) {
+      const timer = setTimeout(() => {
+        setActiveCategory(null);
+      }, 800);
+      return () => clearTimeout(timer);
     }
-    
-    return () => {
-        if (timer) clearTimeout(timer);
-    };
   }, [isOpen]);
 
   // --- History Management for Internal Navigation ---
@@ -167,11 +186,13 @@ export const StreamingModal: React.FC<StreamingModalProps> = ({ isOpen, onClose 
 
   const handleDrag = (e: React.PointerEvent<HTMLDivElement>, percentageDragged: number) => {
     const progress = Math.max(0, Math.min(1, 1 - percentageDragged));
+    document.documentElement.setAttribute('data-drawer-dragging', 'true');
     document.documentElement.style.setProperty('--drawer-transition-duration', '0s');
     document.documentElement.style.setProperty('--drawer-progress', progress.toString());
   };
 
   const handleRelease = (e: React.PointerEvent<HTMLDivElement>, open: boolean) => {
+    document.documentElement.removeAttribute('data-drawer-dragging');
     document.documentElement.style.setProperty('--drawer-transition-duration', '0.8s');
     document.documentElement.style.setProperty('--drawer-progress', open ? '1' : '0');
   };
@@ -180,15 +201,16 @@ export const StreamingModal: React.FC<StreamingModalProps> = ({ isOpen, onClose 
   // --- Render Desktop ---
   if (isDesktop) {
     return (
-      <div className={`fixed inset-0 z-50 flex items-center justify-center p-4 duration-500 transition-all ${isOpen ? 'visible' : 'invisible delay-300'}`}>
+      <div className={`fixed inset-0 z-50 flex items-center justify-center p-4 ${isOpen ? 'visible' : 'invisible delay-[800ms] pointer-events-none'}`}>
         {/* Backdrop */}
         <div 
-            className={`absolute inset-0 bg-black/[0.13] transition-all duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] ${isOpen ? 'opacity-100 backdrop-blur-[15px]' : 'opacity-0 backdrop-blur-[0px]'}`}
+            className={`absolute inset-0 bg-black/[0.13] transition-all duration-[800ms] ease-[cubic-bezier(0.32,0.72,0,1)] ${isOpen ? 'opacity-100' : 'opacity-0'}`}
             onClick={handleManualClose}
         />
         
         {/* Modal Container */}
-        <div className={`relative w-[420px] bg-[#F2F2F7] dark:bg-[#1c1c1e] rounded-[16px] shadow-2xl transform transition-all duration-1000 ease-[cubic-bezier(0.32,0.72,0,1)] border border-white/10 ${isOpen ? 'scale-100 opacity-100' : 'scale-95 opacity-0'}`}>
+        <div className={`relative w-[420px] overflow-hidden isolation-isolate bg-[#F2F2F7]/70 dark:bg-[#1c1c1e]/70 rounded-[16px] shadow-2xl transform transition-all duration-[800ms] ease-[cubic-bezier(0.32,0.72,0,1)] ${isOpen ? 'translate-y-0' : 'translate-y-[100vh]'}`}>
+            <div className="absolute inset-0 backdrop-blur-xl -z-10 hidden md:block" />
             <IOSNavigationStack 
                 activeCategory={activeCategory}
                 onClose={handleManualClose}
@@ -197,6 +219,9 @@ export const StreamingModal: React.FC<StreamingModalProps> = ({ isOpen, onClose 
                 isModalOpen={isOpen}
                 isDesktop={true}
                 isLandscape={isLandscape}
+                scrollProgress={scrollProgress}
+                setScrollProgress={setScrollProgress}
+                isDarkMode={isDarkMode}
             />
         </div>
       </div>
@@ -215,16 +240,16 @@ export const StreamingModal: React.FC<StreamingModalProps> = ({ isOpen, onClose 
     >
       <Drawer.Portal>
         <Drawer.Overlay 
-          className="fixed inset-0 bg-black/[0.13] z-50 transition-opacity duration-[1000ms]"
+          className="fixed inset-0 bg-black/[0.13] z-50 transition-opacity duration-[800ms]"
         />
-        <Drawer.Content className="bg-[#F2F2F7] dark:bg-[#1c1c1e] flex flex-col rounded-t-[13px] fixed bottom-0 left-0 right-0 z-50 outline-none shadow-2xl h-[calc(90.7vh-0.84px)] landscape:h-auto landscape:max-h-[96vh] landscape:rounded-t-[13px] landscape:rounded-b-none landscape:left-[19px] landscape:right-[19px] landscape:bottom-0 landscape:mx-auto landscape:max-w-lg">
+        <Drawer.Content className={`bg-[#F2F2F7] dark:bg-[#1c1c1e] flex flex-col rounded-t-[13px] fixed bottom-0 left-0 right-0 z-50 outline-none shadow-2xl ${isLandscape ? 'landscape:rounded-t-[13px] landscape:rounded-b-none landscape:left-[19px] landscape:right-[19px] landscape:bottom-0 landscape:mx-auto landscape:max-w-lg' : 'h-[calc(90.7vh-0.84px)]'}`}>
             
             <Drawer.Title className="sr-only">Alternativas Legales</Drawer.Title>
             <Drawer.Description className="sr-only">Seleccione un servicio de streaming</Drawer.Description>
 
             <div className="absolute top-2 left-1/2 -translate-x-1/2 w-10 h-1.5 rounded-full bg-gray-300 dark:bg-gray-600 z-50 pointer-events-none opacity-80" />
 
-            <div className="flex-1 relative bg-[#F2F2F7] dark:bg-[#1c1c1e] overflow-hidden rounded-t-[13px] landscape:rounded-t-[13px] landscape:rounded-b-none transform-gpu">
+            <div className="relative bg-[#F2F2F7] dark:bg-[#1c1c1e] overflow-hidden rounded-t-[13px] landscape:rounded-t-[13px] landscape:rounded-b-none transform-gpu">
                  <IOSNavigationStack 
                     activeCategory={activeCategory}
                     onClose={handleManualClose}
@@ -233,8 +258,12 @@ export const StreamingModal: React.FC<StreamingModalProps> = ({ isOpen, onClose 
                     isModalOpen={isOpen}
                     isDesktop={false}
                     isLandscape={isLandscape}
+                    scrollProgress={scrollProgress}
+                    setScrollProgress={setScrollProgress}
+                    isDarkMode={isDarkMode}
                 />
             </div>
+            {/* Workaround for bottom gap during bounce */}
         </Drawer.Content>
       </Drawer.Portal>
     </Drawer.Root>
@@ -251,33 +280,90 @@ interface NavigationProps {
     isModalOpen: boolean;
     isDesktop: boolean;
     isLandscape: boolean;
+    scrollProgress: number;
+    setScrollProgress: (val: number) => void;
+    isDarkMode: boolean;
 }
 
-const TRANSITION_CLASSES = "all 700ms cubic-bezier(0.32,0.72,0,1)";
+const TRANSITION_CLASSES = "all 800ms cubic-bezier(0.32,0.72,0,1)";
 
-const IOSNavigationStack: React.FC<NavigationProps> = ({ activeCategory, onClose, onBack, onSelectCategory, isModalOpen, isDesktop, isLandscape }) => {
+const IOSNavigationStack: React.FC<NavigationProps> = ({ 
+    activeCategory, 
+    onClose, 
+    onBack, 
+    onSelectCategory, 
+    isModalOpen, 
+    isDesktop, 
+    isLandscape,
+    scrollProgress,
+    setScrollProgress,
+    isDarkMode
+}) => {
     const [menuHeight, setMenuHeight] = useState<number | undefined>(undefined);
     const [displayedCategory, setDisplayedCategory] = useState<CategoryData | null>(activeCategory);
+    const [navTransitionType, setNavTransitionType] = useState<'none' | 'fade-out' | 'fade-in'>('none');
+    const prevCategoryRef = useRef(activeCategory);
+    const categoryScrollPositions = useRef<Record<string, number>>({});
+    const isProgrammaticScroll = useRef(false);
 
     const categoriesRef = useRef<HTMLDivElement>(null);
     const servicesRef = useRef<HTMLDivElement>(null);
     const sliderRef = useRef<HTMLDivElement>(null);
     const contentWrapperRef = useRef<HTMLDivElement>(null);
 
+    const [pressedId, setPressedId] = useState<string | null>(null);
+
+    useEffect(() => {
+        if (prevCategoryRef.current !== activeCategory) {
+            let srcScroll = 0;
+            let destScroll = 0;
+
+            if (activeCategory) {
+                // Navigating TO category
+                srcScroll = categoriesRef.current ? Math.min(categoriesRef.current.scrollTop / 15, 1) : 0;
+                
+                // Use saved scroll position for the destination category
+                const savedScroll = categoryScrollPositions.current[activeCategory.id] || 0;
+                destScroll = Math.min(savedScroll / 15, 1);
+                
+                // Restore scroll position
+                if (servicesRef.current && servicesRef.current.scrollTop !== savedScroll) {
+                    isProgrammaticScroll.current = true;
+                    servicesRef.current.scrollTop = savedScroll;
+                }
+            } else {
+                // Navigating BACK to home
+                // Save scroll position of the category we are leaving
+                if (prevCategoryRef.current && servicesRef.current) {
+                    categoryScrollPositions.current[prevCategoryRef.current.id] = servicesRef.current.scrollTop;
+                }
+                
+                srcScroll = servicesRef.current ? Math.min(servicesRef.current.scrollTop / 15, 1) : 0;
+                destScroll = categoriesRef.current ? Math.min(categoriesRef.current.scrollTop / 15, 1) : 0;
+            }
+
+            if (srcScroll > 0 && destScroll === 0) {
+                setNavTransitionType('fade-out');
+                setTimeout(() => setScrollProgress(destScroll), 50);
+            } else if (srcScroll === 0 && destScroll > 0) {
+                setNavTransitionType('fade-in');
+                setTimeout(() => setScrollProgress(destScroll), 50);
+            } else {
+                setNavTransitionType('none');
+                setScrollProgress(destScroll);
+            }
+
+            const timer = setTimeout(() => setNavTransitionType('none'), 1000); // 800ms slide + 200ms blur
+            prevCategoryRef.current = activeCategory;
+            return () => clearTimeout(timer);
+        }
+    }, [activeCategory, setScrollProgress]);
+
     const [pendingService, setPendingService] = useState<Service | null>(null);
 
     useEffect(() => {
         if (activeCategory) {
             setDisplayedCategory(activeCategory);
-        }
-    }, [activeCategory]);
-
-    // Reset scroll positions when category changes
-    useEffect(() => {
-        if (activeCategory && servicesRef.current) {
-            servicesRef.current.scrollTop = 0;
-        } else if (!activeCategory && categoriesRef.current) {
-            categoriesRef.current.scrollTop = 0;
         }
     }, [activeCategory]);
 
@@ -430,10 +516,10 @@ const IOSNavigationStack: React.FC<NavigationProps> = ({ activeCategory, onClose
         }
         const updateHeight = () => {
             const currentRef = activeCategory ? servicesRef.current : categoriesRef.current;
-            if (currentRef) {
-                // For separate scrollable containers, we might want a fixed height or dynamic
-                const contentHeight = currentRef.scrollHeight;
-                const maxHeight = window.innerHeight * (isDesktop ? 0.85 : 0.95);
+            if (currentRef && currentRef.firstElementChild) {
+                // Measure the actual content height from the inner wrapper
+                const contentHeight = (currentRef.firstElementChild as HTMLElement).offsetHeight;
+                const maxHeight = window.innerHeight * 0.85;
                 setMenuHeight(Math.min(contentHeight, maxHeight));
             }
         };
@@ -446,7 +532,8 @@ const IOSNavigationStack: React.FC<NavigationProps> = ({ activeCategory, onClose
     }, [activeCategory, isDesktop, isLandscape]);
 
     const onPointerDown = (e: React.PointerEvent) => {
-        if (!activeCategory) return;
+        if (!activeCategory || isDesktop) return;
+        (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
         touchStartX.current = e.clientX;
         touchStartY.current = e.clientY;
         previousMoveX.current = e.clientX;
@@ -504,6 +591,7 @@ const IOSNavigationStack: React.FC<NavigationProps> = ({ activeCategory, onClose
     const onPointerUp = (e: React.PointerEvent) => {
         if (!isDraggingRef.current || !activeCategory) return;
         isDraggingRef.current = false;
+        try { (e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId); } catch(err) {}
         
         if (sliderRef.current) {
             sliderRef.current.style.transition = TRANSITION_CLASSES;
@@ -599,14 +687,37 @@ const IOSNavigationStack: React.FC<NavigationProps> = ({ activeCategory, onClose
     const renderCategory = activeCategory || displayedCategory;
     const navTransition = isModalOpen ? TRANSITION_CLASSES : "none";
 
+    let transitionStyle = 'none';
+    if (navTransitionType === 'fade-out') {
+        transitionStyle = 'background-color 800ms cubic-bezier(0.32,0.72,0,1), backdrop-filter 200ms ease-in-out 800ms, -webkit-backdrop-filter 200ms ease-in-out 800ms';
+    } else if (navTransitionType === 'fade-in') {
+        transitionStyle = 'background-color 800ms cubic-bezier(0.32,0.72,0,1), backdrop-filter 200ms ease-in-out 0ms, -webkit-backdrop-filter 200ms ease-in-out 0ms';
+    }
+
     return (
         <div className={`flex flex-col w-full relative ${!isDesktop ? 'h-full' : ''}`}>
-            <div className="absolute top-0 left-0 right-0 h-[70px] bg-[#F2F2F7]/70 dark:bg-[#1c1c1e]/70 backdrop-blur-xl z-20 border-b border-gray-200 dark:border-gray-800/50">
+            <div 
+                className="absolute top-0 left-0 right-0 h-[70px] z-20"
+                style={{
+                    backdropFilter: `blur(${scrollProgress * 20}px)`,
+                    WebkitBackdropFilter: `blur(${scrollProgress * 20}px)`,
+                    backgroundColor: isDarkMode 
+                        ? `rgba(28, 28, 30, ${scrollProgress * 0.7})` 
+                        : `rgba(242, 242, 247, ${scrollProgress * 0.7})`,
+                    transition: transitionStyle
+                }}
+            >
                 {/* Back Button Area */}
                 <button 
-                    onClick={onBack}
+                    onPointerDown={(e) => e.stopPropagation()}
+                    onPointerUp={(e) => {
+                        if (activeCategory) {
+                            e.stopPropagation();
+                            onBack();
+                        }
+                    }}
                     disabled={!activeCategory}
-                    className={`absolute top-0 left-0 h-full pl-4 pr-12 flex items-center text-[#007AFF] transition-all duration-300 active:opacity-50 z-30 ${
+                    className={`absolute top-0 left-0 h-full pl-4 pr-12 flex items-center text-[#007AFF] transition-all duration-300 active:opacity-50 z-50 touch-none pointer-events-auto cursor-pointer ${
                         activeCategory ? 'opacity-100' : 'opacity-0 pointer-events-none'
                     }`}
                 >
@@ -637,10 +748,14 @@ const IOSNavigationStack: React.FC<NavigationProps> = ({ activeCategory, onClose
                 </div>
 
                 {/* Close Button Area */}
-                <div className="absolute top-0 right-0 h-full flex items-center pr-[15.5px] z-30">
+                <div className="absolute top-0 right-0 h-full flex items-center pr-[15.5px] z-50">
                     <button 
-                        onClick={onClose}
-                        className="bg-[#767680]/15 dark:bg-black/20 w-10 h-10 rounded-full flex items-center justify-center text-gray-500 dark:text-gray-400 hover:bg-[#767680]/25 dark:hover:bg-black/30 active:opacity-60 active:scale-90 transition-all duration-300 outline-none"
+                        onPointerDown={(e) => e.stopPropagation()}
+                        onPointerUp={(e) => {
+                            e.stopPropagation();
+                            onClose();
+                        }}
+                        className="bg-[#767680]/15 dark:bg-black/20 backdrop-blur-xl w-10 h-10 rounded-full flex items-center justify-center text-gray-500 dark:text-gray-400 hover:bg-gray-300/50 dark:hover:bg-white/10 active:opacity-60 active:scale-90 transition-all duration-300 outline-none touch-none pointer-events-auto cursor-pointer"
                     >
                         <X className="w-6 h-6" strokeWidth={2.5} />
                     </button>
@@ -650,13 +765,11 @@ const IOSNavigationStack: React.FC<NavigationProps> = ({ activeCategory, onClose
             <div 
                 ref={contentWrapperRef}
                 style={{ height: (isDesktop || isLandscape) ? (menuHeight ? `${menuHeight}px` : 'auto') : '100%' }} 
-                className={`relative w-full ${isDesktop || isLandscape ? 'max-h-[95vh]' : 'flex-1'} overflow-hidden transition-[height] ${isModalOpen ? 'duration-[1000ms]' : 'duration-0'} ease-[cubic-bezier(0.32,0.72,0,1)]`}
+                className={`relative w-full overflow-hidden ${(isDesktop || isLandscape) ? 'transition-[height]' : 'flex-1 h-full'} ${isModalOpen ? 'duration-[800ms]' : 'duration-0'} ease-[cubic-bezier(0.32,0.72,0,1)]`}
                 onPointerDown={onPointerDown}
                 onPointerMove={onPointerMove}
                 onPointerUp={onPointerUp}
-                onPointerLeave={onPointerUp}
                 onPointerCancel={onPointerUp}
-                data-vaul-no-drag
             >
                 <div 
                     ref={sliderRef}
@@ -669,27 +782,77 @@ const IOSNavigationStack: React.FC<NavigationProps> = ({ activeCategory, onClose
                 >
                     <div 
                         ref={categoriesRef}
-                        className="w-[50%] h-full shrink-0 pb-8 pt-[86px] overflow-y-auto no-scrollbar touch-pan-y"
+                        onScroll={(e) => {
+                            if (!activeCategory) {
+                                if (isProgrammaticScroll.current) {
+                                    isProgrammaticScroll.current = false;
+                                } else {
+                                    setScrollProgress(Math.min(e.currentTarget.scrollTop / 15, 1));
+                                    if (navTransitionType !== 'none') setNavTransitionType('none');
+                                }
+                            }
+                        }}
+                        onTouchStart={() => {
+                            if (navTransitionType !== 'none') setNavTransitionType('none');
+                        }}
+                        onWheel={() => {
+                            if (navTransitionType !== 'none') setNavTransitionType('none');
+                        }}
+                        className="w-[50%] h-full shrink-0 overflow-y-auto no-scrollbar touch-pan-y"
                     >
-                         <div className="px-4 mb-2">
-                            <h3 className="text-[13px] text-gray-500 dark:text-gray-400 uppercase tracking-wide ml-4">Categorías</h3>
+                        <div className="pb-8 pt-[86px]">
+                             <div className="px-4 mb-2">
+                                <h3 className="text-[13px] text-gray-500 dark:text-gray-400 uppercase tracking-wide ml-4">Categorías</h3>
+                            </div>
+                            <div className="mx-4 bg-white dark:bg-[#2C2C2E]/70 rounded-[12px] overflow-hidden">
+                                {CATEGORIES.map((cat, i) => {
+                                    const isPressed = pressedId === cat.id;
+                                    const isNextPressed = pressedId === CATEGORIES[i + 1]?.id;
+                                    const hideDivider = isPressed || isNextPressed;
+                                    return (
+                                        <div key={cat.id} className="relative">
+                                            <IOSListItem 
+                                                icon={<div className="w-7 h-7 rounded-[6px] bg-blue-500 flex items-center justify-center">{cat.icon}</div>} 
+                                                label={cat.title} 
+                                                onClick={() => onSelectCategory(cat)} 
+                                                onPointerDown={() => setPressedId(cat.id)}
+                                                onPointerUp={() => setPressedId(null)}
+                                                onPointerCancel={() => setPressedId(null)}
+                                                showChevron 
+                                            />
+                                            {i < CATEGORIES.length - 1 && (
+                                                <div className={`absolute bottom-0 left-[56px] right-0 h-[1px] bg-black/10 dark:bg-white/10 transition-opacity duration-100 ${hideDivider ? 'opacity-0' : 'opacity-100'}`} />
+                                            )}
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                            <p className="px-8 mt-4 text-[13px] text-gray-400 dark:text-gray-500 text-center leading-normal">Selecciona una categoría para ver los servicios legales disponibles en tu región.</p>
                         </div>
-                        <div className="mx-4 bg-white dark:bg-[#2C2C2E] rounded-[12px] overflow-hidden">
-                            {CATEGORIES.map((cat, i) => (
-                                <div key={cat.id} className="relative">
-                                    <IOSListItem icon={<div className="w-7 h-7 rounded-[6px] bg-blue-500 flex items-center justify-center">{cat.icon}</div>} label={cat.title} onClick={() => onSelectCategory(cat)} showChevron />
-                                    {i < CATEGORIES.length - 1 && <div className="absolute bottom-0 left-[56px] right-0 h-[1px] bg-gray-200 dark:bg-gray-700/60" />}
-                                </div>
-                            ))}
-                        </div>
-                        <p className="px-8 mt-4 text-[13px] text-gray-400 dark:text-gray-500 text-center leading-normal">Selecciona una categoría para ver los servicios legales disponibles en tu región.</p>
                     </div>
 
                     <div 
                         ref={servicesRef}
-                        className="w-[50%] h-full shrink-0 pb-8 pt-[86px] overflow-y-auto no-scrollbar touch-pan-y"
+                        onScroll={(e) => {
+                            if (activeCategory) {
+                                if (isProgrammaticScroll.current) {
+                                    isProgrammaticScroll.current = false;
+                                } else {
+                                    setScrollProgress(Math.min(e.currentTarget.scrollTop / 15, 1));
+                                    if (navTransitionType !== 'none') setNavTransitionType('none');
+                                }
+                            }
+                        }}
+                        onTouchStart={() => {
+                            if (navTransitionType !== 'none') setNavTransitionType('none');
+                        }}
+                        onWheel={() => {
+                            if (navTransitionType !== 'none') setNavTransitionType('none');
+                        }}
+                        className="w-[50%] h-full shrink-0 overflow-y-auto no-scrollbar touch-pan-y"
                     >
-                        {renderCategory && (() => {
+                        <div className="pb-8 pt-[86px]">
+                            {renderCategory && (() => {
                             const grouped: Record<string, Service[]> = {};
                             const sectionOrder: string[] = [];
                             renderCategory.services.forEach(s => {
@@ -703,13 +866,19 @@ const IOSNavigationStack: React.FC<NavigationProps> = ({ activeCategory, onClose
                                 return (
                                     <div key={sectionName} className="mb-6 last:mb-0">
                                         {sectionName !== 'General' && <div className="px-4 mb-2"><h3 className="text-[13px] text-gray-500 dark:text-gray-400 uppercase tracking-wide ml-4">{sectionName}</h3></div>}
-                                        <div className={`mx-4 bg-white dark:bg-[#2C2C2E] ${isSystemStoreSection ? 'rounded-[20px]' : 'rounded-[12px]'} overflow-hidden`}>
+                                        <div className={`mx-4 bg-white dark:bg-[#2C2C2E]/70 ${isSystemStoreSection ? 'rounded-[20px]' : 'rounded-[12px]'} overflow-hidden`}>
                                             {sectionServices.map((service, idx) => {
+                                                const isPressed = pressedId === service.name;
+                                                const isNextPressed = pressedId === sectionServices[idx + 1]?.name;
+                                                const hideDivider = isPressed || isNextPressed;
+
                                                 if (service.isSystemStore) {
                                                     const storeData = getSystemStoreData();
                                                     return (
                                                         <div key={service.name} className="relative">
-                                                            <div className="w-full flex items-center justify-between p-3 pl-4 min-h-[72px]">
+                                                            <div 
+                                                                className={`w-full flex items-center justify-between p-3 pl-4 min-h-[72px] select-none transition-colors ${isPressed ? 'bg-gray-100 dark:bg-[#323234]' : ''}`}
+                                                            >
                                                                 <div className="flex items-center gap-4">
                                                                     <div className={`w-12 h-12 rounded-[14px] ${storeData.color} flex items-center justify-center shrink-0 transition-opacity ${storeData.disabled ? 'opacity-50' : 'opacity-100'}`}>{storeData.icon}</div>
                                                                     <div className="flex flex-col justify-center">
@@ -717,16 +886,55 @@ const IOSNavigationStack: React.FC<NavigationProps> = ({ activeCategory, onClose
                                                                         {storeData.disabled && <span className="text-[13px] text-gray-400">No compatible</span>}
                                                                     </div>
                                                                 </div>
-                                                                <div className="pr-1"><button onClick={(e) => { e.stopPropagation(); if (!storeData.disabled) handleServiceClick(service); }} disabled={storeData.disabled} className={`px-5 py-1.5 rounded-full text-[15px] font-bold transition-all ${storeData.disabled ? 'bg-gray-100 dark:bg-gray-800 text-gray-400 cursor-not-allowed' : 'bg-[#007AFF] text-white active:opacity-80'}`}>{storeData.buttonLabel}</button></div>
+                                                                <div className="pr-1">
+                                                                    <button 
+                                                                        onPointerDown={(e) => {
+                                                                            if (!storeData.disabled) {
+                                                                                e.currentTarget.setPointerCapture(e.pointerId);
+                                                                                setPressedId(service.name);
+                                                                            }
+                                                                        }}
+                                                                        onPointerUp={(e) => {
+                                                                            if (e.currentTarget.hasPointerCapture(e.pointerId)) {
+                                                                                e.currentTarget.releasePointerCapture(e.pointerId);
+                                                                            }
+                                                                            setPressedId(null);
+                                                                        }}
+                                                                        onPointerCancel={(e) => {
+                                                                            if (e.currentTarget.hasPointerCapture(e.pointerId)) {
+                                                                                e.currentTarget.releasePointerCapture(e.pointerId);
+                                                                            }
+                                                                            setPressedId(null);
+                                                                        }}
+                                                                        onClick={(e) => { e.stopPropagation(); if (!storeData.disabled) handleServiceClick(service); }} 
+                                                                        disabled={storeData.disabled} 
+                                                                        className={`px-5 py-1.5 rounded-full text-[15px] font-bold transition-all ${storeData.disabled ? 'bg-gray-100 dark:bg-800/70 text-gray-400 cursor-not-allowed' : 'bg-[#007AFF] text-white active:opacity-80'}`}
+                                                                    >
+                                                                        {storeData.buttonLabel}
+                                                                    </button>
+                                                                </div>
                                                             </div>
-                                                             {idx < sectionServices.length - 1 && <div className="absolute bottom-0 left-[72px] right-0 h-[1px] bg-gray-200 dark:bg-gray-700/60" />}
+                                                            {idx < sectionServices.length - 1 && (
+                                                                <div className={`absolute bottom-0 left-[72px] right-0 h-[1px] bg-black/10 dark:bg-white/10 transition-opacity duration-100 ${hideDivider ? 'opacity-0' : 'opacity-100'}`} />
+                                                            )}
                                                         </div>
                                                     );
                                                 }
                                                 return (
                                                     <div key={service.name} className="relative">
-                                                        <IOSListItem icon={<div className={`w-7 h-7 rounded-[6px] flex items-center justify-center text-[12px] font-bold ${service.color}`}>{service.iconContent ? service.iconContent : (service.iconLabel || service.name[0])}</div>} label={service.name} onClick={() => handleServiceClick(service)} external actionLabel={getActionLabel(service)} />
-                                                        {idx < sectionServices.length - 1 && <div className="absolute bottom-0 left-[56px] right-0 h-[1px] bg-gray-200 dark:bg-gray-700/60" />}
+                                                        <IOSListItem 
+                                                            icon={<div className={`w-7 h-7 rounded-[6px] flex items-center justify-center text-[12px] font-bold ${service.color}`}>{service.iconContent ? service.iconContent : (service.iconLabel || service.name[0])}</div>} 
+                                                            label={service.name} 
+                                                            onClick={() => handleServiceClick(service)} 
+                                                            onPointerDown={() => setPressedId(service.name)}
+                                                            onPointerUp={() => setPressedId(null)}
+                                                            onPointerCancel={() => setPressedId(null)}
+                                                            external 
+                                                            actionLabel={getActionLabel(service)} 
+                                                        />
+                                                        {idx < sectionServices.length - 1 && (
+                                                            <div className={`absolute bottom-0 left-[56px] right-0 h-[1px] bg-black/10 dark:bg-white/10 transition-opacity duration-100 ${hideDivider ? 'opacity-0' : 'opacity-100'}`} />
+                                                        )}
                                                     </div>
                                                 );
                                             })}
@@ -736,6 +944,7 @@ const IOSNavigationStack: React.FC<NavigationProps> = ({ activeCategory, onClose
                             });
                         })()}
                          {renderCategory && <p className="px-8 mt-4 text-[13px] text-gray-400 dark:text-gray-500 text-center leading-normal">El acceso a estos sitios es seguro y apoya a los creadores de contenido.</p>}
+                        </div>
                     </div>
                 </div>
             </div>

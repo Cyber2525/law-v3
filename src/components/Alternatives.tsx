@@ -7,19 +7,19 @@ export const Alternatives: React.FC = () => {
         <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3 pl-4">
             Alternativas Legales Sugeridas
         </h3>
-        <div className="glass-panel rounded-2xl overflow-hidden">
+        <div className="glass-panel bg-white dark:bg-[#2C2C2E] rounded-2xl overflow-hidden">
             <AlternativeItem 
                 icon={<Film className="text-purple-400" />} 
                 title="Cine y Series" 
                 subtitle="Netflix, Prime Video, HBO Max"
             />
-            <div className="h-[1px] bg-gray-700 ml-14" />
+            <div className="h-[1px] bg-gray-300 dark:bg-white/10 ml-14" />
             <AlternativeItem 
                 icon={<Music className="text-green-400" />} 
                 title="Música" 
                 subtitle="Spotify, Apple Music"
             />
-             <div className="h-[1px] bg-gray-700 ml-14" />
+             <div className="h-[1px] bg-gray-300 dark:bg-white/10 ml-14" />
             <AlternativeItem 
                 icon={<Tv className="text-blue-400" />} 
                 title="Televisión" 

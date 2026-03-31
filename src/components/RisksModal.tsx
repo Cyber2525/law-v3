@@ -94,9 +94,10 @@ function useMediaQuery(query: string) {
 interface DraggableSegmentedControlProps {
     activeSegment: RiskType;
     onChange: (val: RiskType) => void;
+    disabled?: boolean;
 }
 
-const DraggableSegmentedControl: React.FC<DraggableSegmentedControlProps> = ({ activeSegment, onChange }) => {
+const DraggableSegmentedControl: React.FC<DraggableSegmentedControlProps> = ({ activeSegment, onChange, disabled }) => {
     const containerRef = useRef<HTMLDivElement>(null);
     const [isDragging, setIsDragging] = useState(false);
     const [isPressingInactive, setIsPressingInactive] = useState<RiskType | null>(null);
@@ -114,7 +115,7 @@ const DraggableSegmentedControl: React.FC<DraggableSegmentedControlProps> = ({ a
     }, [activeSegment, isDragging]);
 
     const handleContainerPointerDown = (e: React.PointerEvent) => {
-        if (!containerRef.current) return;
+        if (!containerRef.current || disabled) return;
         const rect = containerRef.current.getBoundingClientRect();
         const clickX = e.clientX - rect.left;
         const targetSide = clickX > rect.width / 2 ? 'security' : 'legal';
@@ -132,7 +133,7 @@ const DraggableSegmentedControl: React.FC<DraggableSegmentedControlProps> = ({ a
     };
 
     const handlePillPointerDown = (e: React.PointerEvent) => {
-        if (!containerRef.current) return;
+        if (!containerRef.current || disabled) return;
         e.stopPropagation(); 
         
         setIsDragging(true);
@@ -196,7 +197,6 @@ const DraggableSegmentedControl: React.FC<DraggableSegmentedControlProps> = ({ a
             className="bg-[#767680]/15 dark:bg-black/20 p-[4px] rounded-[16px] flex h-12 relative cursor-pointer touch-none select-none"
             onPointerDown={handleContainerPointerDown}
             onPointerUp={handleContainerPointerUp}
-            onPointerLeave={() => setIsPressingInactive(null)}
         >
             {/* Draggable Background Pill: Margen de 4px para un look más marcado */}
             <div 
@@ -260,20 +260,40 @@ interface RisksModalProps {
 
 export const RisksModal: React.FC<RisksModalProps> = ({ isOpen, onClose }) => {
   const isDesktop = useMediaQuery('(min-width: 600px) and (min-height: 600px)');
+  const isLandscape = useMediaQuery('(orientation: landscape)');
   const [activeSegment, setActiveSegment] = useState<RiskType>('legal');
   const [isDismissable, setIsDismissable] = useState(false);
+  const [scrollProgress, setScrollProgress] = useState(0);
+  const [isDarkMode, setIsDarkMode] = useState(false);
+  const [menuHeight, setMenuHeight] = useState<number | undefined>(undefined);
+  const [isAnimating, setIsAnimatingInternal] = useState(false);
   
+  const legalRef = useRef<HTMLDivElement>(null);
+  const securityRef = useRef<HTMLDivElement>(null);
   const sliderRef = useRef<HTMLDivElement>(null);
   const isSwipingRef = useRef<boolean | null>(null);
   const touchStartXRef = useRef(0);
   const touchStartYRef = useRef(0);
 
   useEffect(() => {
+    const checkDark = () => setIsDarkMode(document.documentElement.classList.contains('dark'));
+    checkDark();
+    const observer = new MutationObserver(checkDark);
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
+    return () => observer.disconnect();
+  }, []);
+
+  // Reset scroll progress when segment or open state changes
+  useEffect(() => {
+    setScrollProgress(0);
+  }, [activeSegment, isOpen]);
+
+  useEffect(() => {
     if (isOpen) {
         setIsDismissable(false);
         const timer = setTimeout(() => {
             setIsDismissable(true);
-        }, 1000);
+        }, 600);
         return () => clearTimeout(timer);
     }
   }, [isOpen]);
@@ -281,51 +301,67 @@ export const RisksModal: React.FC<RisksModalProps> = ({ isOpen, onClose }) => {
   useEffect(() => {
     if (isOpen) setActiveSegment('legal');
     
-    let timer: ReturnType<typeof setTimeout>;
-    
-    if (isOpen) {
-        // 1. Prepare starting state (0 progress, 0s transition)
-        document.documentElement.style.setProperty('--drawer-transition-duration', '0s');
-        document.documentElement.style.setProperty('--drawer-progress', '0');
-        
-        // 2. Wait for Vaul to mount and apply its transform style
-        requestAnimationFrame(() => {
-            requestAnimationFrame(() => {
-                // 3. Enable transition and animate to ending state
-                document.documentElement.style.setProperty('--drawer-transition-duration', '0.8s');
-                document.documentElement.style.setProperty('--drawer-progress', '1');
-            });
-        });
-    } else {
-        // Closing animation
-        // Ensure transition is enabled and animate back to starting state (0 progress)
-        document.documentElement.style.setProperty('--drawer-transition-duration', '0.8s');
-        document.documentElement.style.setProperty('--drawer-progress', '0');
-        
-        // After the animation finishes, remove the transition duration so it jumps to 0px instantly
-        // when Vaul removes the transform style.
-        timer = setTimeout(() => {
-            document.documentElement.style.setProperty('--drawer-transition-duration', '0s');
-        }, 800);
+    if (!isOpen) {
+      const timer = setTimeout(() => {
+        setActiveSegment('legal');
+      }, 800);
+      return () => clearTimeout(timer);
     }
-    
-    return () => {
-        if (timer) clearTimeout(timer);
-    };
   }, [isOpen]);
+
+  useEffect(() => {
+    if (!isDesktop) {
+        setMenuHeight(undefined);
+        return;
+    }
+    const updateHeight = () => {
+        const currentRef = activeSegment === 'legal' ? legalRef.current : securityRef.current;
+        if (currentRef) {
+            const contentElement = currentRef.querySelector('.risks-content-inner');
+            if (contentElement) {
+                const contentHeight = (contentElement as HTMLElement).offsetHeight;
+                const maxHeight = window.innerHeight * 0.85;
+                setMenuHeight(Math.min(contentHeight, maxHeight));
+            }
+        }
+    };
+    const timer = setTimeout(updateHeight, 0);
+    window.addEventListener('resize', updateHeight);
+    return () => {
+        clearTimeout(timer);
+        window.removeEventListener('resize', updateHeight);
+    };
+  }, [activeSegment, isDesktop, isOpen]);
 
   const handleDrag = (e: React.PointerEvent<HTMLDivElement>, percentageDragged: number) => {
     const progress = Math.max(0, Math.min(1, 1 - percentageDragged));
+    document.documentElement.setAttribute('data-drawer-dragging', 'true');
     document.documentElement.style.setProperty('--drawer-transition-duration', '0s');
     document.documentElement.style.setProperty('--drawer-progress', progress.toString());
   };
 
   const handleRelease = (e: React.PointerEvent<HTMLDivElement>, open: boolean) => {
+    document.documentElement.removeAttribute('data-drawer-dragging');
     document.documentElement.style.setProperty('--drawer-transition-duration', '0.8s');
     document.documentElement.style.setProperty('--drawer-progress', open ? '1' : '0');
   };
 
+  const startLockout = () => {
+    setIsAnimatingInternal(true);
+    setTimeout(() => {
+      setIsAnimatingInternal(false);
+    }, 800);
+  };
+
+  const changeSegment = (newSegment: RiskType) => {
+    if (isAnimating || newSegment === activeSegment) return;
+    startLockout();
+    setActiveSegment(newSegment);
+  };
+
   const onPointerDown = (e: React.PointerEvent) => {
+      if (isAnimating) return;
+      (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
       touchStartXRef.current = e.clientX;
       touchStartYRef.current = e.clientY;
       isSwipingRef.current = null;
@@ -374,9 +410,10 @@ export const RisksModal: React.FC<RisksModalProps> = ({ isOpen, onClose }) => {
 
   const onPointerUp = (e: React.PointerEvent) => {
       if (touchStartXRef.current === 0) return;
+      try { (e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId); } catch(err) {}
       
       if (sliderRef.current) {
-          sliderRef.current.style.transition = 'transform 700ms cubic-bezier(0.32, 0.72, 0, 1)';
+          sliderRef.current.style.transition = 'transform 800ms cubic-bezier(0.32, 0.72, 0, 1)';
 
           if (isSwipingRef.current === true) {
               const diffX = e.clientX - touchStartXRef.current;
@@ -385,14 +422,16 @@ export const RisksModal: React.FC<RisksModalProps> = ({ isOpen, onClose }) => {
 
               if (activeSegment === 'legal') {
                   if (diffX < -threshold) {
-                      setActiveSegment('security');
+                      changeSegment('security');
                   } else {
+                      startLockout();
                       sliderRef.current.style.transform = 'translateX(0%)'; 
                   }
               } else {
                   if (diffX > threshold) {
-                      setActiveSegment('legal');
+                      changeSegment('legal');
                   } else {
+                      startLockout();
                       sliderRef.current.style.transform = 'translateX(-50%)';
                   }
               }
@@ -404,19 +443,22 @@ export const RisksModal: React.FC<RisksModalProps> = ({ isOpen, onClose }) => {
       touchStartXRef.current = 0;
   };
 
-  const containerClass = isDesktop 
-    ? "flex flex-col w-full bg-[#F2F2F7] dark:bg-[#1c1c1e] relative h-auto" 
-    : "flex flex-col w-full h-full bg-[#F2F2F7] dark:bg-[#1c1c1e] relative";
+  const containerClass = "flex flex-col w-full h-full bg-[#F2F2F7] dark:bg-[#1E1E20] landscape:bg-[#F2F2F7]/70 landscape:dark:bg-[#1E1E20]/70 md:bg-[#F2F2F7]/70 md:dark:bg-[#1E1E20]/70 relative";
 
-  const scrollAreaClass = isDesktop
-    ? "w-full overflow-hidden" 
-    : "flex-1 overflow-hidden w-full";
+  const scrollAreaClass = "flex-1 overflow-hidden w-full";
 
   const content = (
     <div className={containerClass}>
-        
+        <div className="absolute inset-0 backdrop-blur-xl -z-10 hidden md:block" />
         {/* Fixed Header */}
-        <div className="absolute top-0 left-0 right-0 z-30 bg-[#F2F2F7]/70 dark:bg-[#1c1c1e]/70 backdrop-blur-xl border-b border-black/5 dark:border-white/5 flex flex-col">
+        <div 
+            className="absolute top-0 left-0 right-0 z-30 backdrop-blur-xl flex flex-col"
+            style={{
+                backgroundColor: isDesktop 
+                    ? (isDarkMode ? `rgba(30, 30, 32, ${scrollProgress * 0.7})` : `rgba(242, 242, 247, ${scrollProgress * 0.7})`)
+                    : (isDarkMode ? `rgba(30, 30, 32, 0.7)` : `rgba(242, 242, 247, 0.7)`)
+            }}
+        >
             <div className="relative w-full flex items-center justify-center h-10 mt-4 shrink-0">
                 <h2 className="text-[22px] font-semibold text-gray-900 dark:text-white leading-none">
                     Riesgos y Amenazas
@@ -424,8 +466,12 @@ export const RisksModal: React.FC<RisksModalProps> = ({ isOpen, onClose }) => {
                 
                 {/* Botón X con feedback mejorado */}
                 <button 
-                    onClick={onClose}
-                    className="absolute right-4 top-0 w-10 h-10 bg-[#767680]/15 dark:bg-black/20 rounded-full flex items-center justify-center text-gray-500 dark:text-gray-400 hover:bg-[#767680]/25 dark:hover:bg-black/30 active:opacity-60 active:scale-90 transition-all duration-300 outline-none"
+                    onPointerDown={(e) => e.stopPropagation()}
+                    onPointerUp={(e) => {
+                        e.stopPropagation();
+                        onClose();
+                    }}
+                    className="absolute right-4 top-0 w-10 h-10 bg-[#767680]/15 dark:bg-black/20 backdrop-blur-xl rounded-full flex items-center justify-center text-gray-500 dark:text-gray-400 hover:bg-gray-300/50 dark:hover:bg-white/10 active:opacity-60 active:scale-90 transition-all duration-300 outline-none touch-none pointer-events-auto cursor-pointer z-50"
                     aria-label="Cerrar"
                 >
                     <X className="w-6 h-6" strokeWidth={2.5} />
@@ -436,7 +482,8 @@ export const RisksModal: React.FC<RisksModalProps> = ({ isOpen, onClose }) => {
             <div className="px-4 mt-4 mb-4 w-full shrink-0">
                 <DraggableSegmentedControl 
                     activeSegment={activeSegment} 
-                    onChange={setActiveSegment} 
+                    onChange={changeSegment} 
+                    disabled={isAnimating}
                 />
             </div>
         </div>
@@ -447,87 +494,101 @@ export const RisksModal: React.FC<RisksModalProps> = ({ isOpen, onClose }) => {
             onPointerDown={onPointerDown}
             onPointerMove={onPointerMove}
             onPointerUp={onPointerUp}
-            onPointerLeave={onPointerUp}
             onPointerCancel={onPointerUp}
-            data-vaul-no-drag
         >
             {/* Swipeable View Container */}
             <div 
                 ref={sliderRef}
-                className="flex w-[200%] h-full transition-transform duration-700 ease-[cubic-bezier(0.32,0.72,0,1)] will-change-transform touch-none select-none"
+                className="flex w-[200%] h-full transition-transform duration-800 ease-[cubic-bezier(0.32,0.72,0,1)] will-change-transform touch-none select-none"
                 style={{
                     transform: activeSegment === 'legal' ? 'translateX(0%)' : 'translateX(-50%)'
                 }}
             >
                 {/* Left Slide: Legal */}
-                <div className="w-[50%] h-full overflow-y-auto no-scrollbar px-4 pb-4 touch-pan-y">
-                    <div className="h-[136px] shrink-0" />
-                    <h3 className="text-[13px] text-gray-500 dark:text-gray-400 uppercase tracking-wide pl-4 mb-2">
-                        Marco Legal y Sanciones
-                    </h3>
-                    <div className="bg-white dark:bg-[#2C2C2E] rounded-[12px] overflow-hidden">
-                        {LEGAL_RISKS.map((item, index, arr) => (
-                            <div key={index} className="relative">
-                                <div className="p-4 flex items-start space-x-4">
-                                    <div className={`shrink-0 w-10 h-10 rounded-lg ${item.color} flex items-center justify-center mt-0.5`}>
-                                        {item.icon}
+                <div 
+                    ref={legalRef}
+                    onScroll={(e) => setScrollProgress(Math.min(e.currentTarget.scrollTop / 15, 1))}
+                    className="w-[50%] h-full overflow-y-auto no-scrollbar px-4 pb-4 touch-pan-y"
+                >
+                    <div className="risks-content-inner">
+                        <div className="h-[136px] shrink-0" />
+                        <h3 className="text-[13px] text-gray-500 dark:text-gray-400 uppercase tracking-wide pl-4 mb-2">
+                            Marco Legal y Sanciones
+                        </h3>
+                        <div className="bg-white dark:bg-[#2C2C2E]/70 rounded-[12px] overflow-hidden">
+                            {LEGAL_RISKS.map((item, index, arr) => {
+                                return (
+                                    <div key={index} className="relative">
+                                        <div className="p-4 flex items-start space-x-4">
+                                            <div className={`shrink-0 w-10 h-10 rounded-lg ${item.color} flex items-center justify-center mt-0.5`}>
+                                                {item.icon}
+                                            </div>
+                                            <div className="flex-1">
+                                                <h4 className="text-[17px] font-semibold text-gray-900 dark:text-white mb-1">
+                                                    {item.title}
+                                                </h4>
+                                                <p className="text-[15px] text-gray-500 dark:text-gray-400 leading-snug">
+                                                    {item.description}
+                                                </p>
+                                            </div>
+                                        </div>
+                                        {index < arr.length - 1 && (
+                                            <div className="absolute bottom-0 left-[72px] right-0 h-[1px] bg-black/10 dark:bg-white/10" />
+                                        )}
                                     </div>
-                                    <div className="flex-1">
-                                        <h4 className="text-[17px] font-semibold text-gray-900 dark:text-white mb-1">
-                                            {item.title}
-                                        </h4>
-                                        <p className="text-[15px] text-gray-500 dark:text-gray-400 leading-snug">
-                                            {item.description}
-                                        </p>
-                                    </div>
-                                </div>
-                                {index < arr.length - 1 && (
-                                    <div className="absolute bottom-0 left-[72px] right-0 h-[1px] bg-gray-200 dark:bg-gray-700/60" />
-                                )}
-                            </div>
-                        ))}
-                    </div>
-                     <div className="mt-6 flex items-start gap-3 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-xl">
-                        <Info className="w-5 h-5 text-blue-600 dark:text-blue-400 shrink-0 mt-0.5" />
-                        <p className="text-[13px] text-blue-700 dark:text-blue-300 leading-normal">
-                            La legislación actual permite el cierre cautelar de páginas web sin necesidad de identificar al usuario final, pero el registro de IPs permanece.
-                        </p>
+                                );
+                            })}
+                        </div>
+                        <div className="mt-6 flex items-start gap-3 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-xl">
+                            <Info className="w-5 h-5 text-blue-600 dark:text-blue-400 shrink-0 mt-0.5" />
+                            <p className="text-[13px] text-blue-700 dark:text-blue-300 leading-normal">
+                                La legislación actual permite el cierre cautelar de páginas web sin necesidad de identificar al usuario final, pero el registro de IPs permanece.
+                            </p>
+                        </div>
                     </div>
                 </div>
 
                 {/* Right Slide: Security */}
-                <div className="w-[50%] h-full overflow-y-auto no-scrollbar px-4 pb-4 touch-pan-y">
-                    <div className="h-[136px] shrink-0" />
-                     <h3 className="text-[13px] text-gray-500 dark:text-gray-400 uppercase tracking-wide pl-4 mb-2">
-                        Amenazas Técnicas
-                    </h3>
-                    <div className="bg-white dark:bg-[#2C2C2E] rounded-[12px] overflow-hidden">
-                        {SECURITY_RISKS.map((item, index, arr) => (
-                            <div key={index} className="relative">
-                                <div className="p-4 flex items-start space-x-4">
-                                    <div className={`shrink-0 w-10 h-10 rounded-lg ${item.color} flex items-center justify-center mt-0.5`}>
-                                        {item.icon}
+                <div 
+                    ref={securityRef}
+                    onScroll={(e) => setScrollProgress(Math.min(e.currentTarget.scrollTop / 15, 1))}
+                    className="w-[50%] h-full overflow-y-auto no-scrollbar px-4 pb-4 touch-pan-y"
+                >
+                    <div className="risks-content-inner">
+                        <div className="h-[136px] shrink-0" />
+                        <h3 className="text-[13px] text-gray-500 dark:text-gray-400 uppercase tracking-wide pl-4 mb-2">
+                            Amenazas Técnicas
+                        </h3>
+                        <div className="bg-white dark:bg-[#2C2C2E]/70 rounded-[12px] overflow-hidden">
+                            {SECURITY_RISKS.map((item, index, arr) => {
+                                return (
+                                    <div key={index} className="relative">
+                                        <div className="p-4 flex items-start space-x-4">
+                                            <div className={`shrink-0 w-10 h-10 rounded-lg ${item.color} flex items-center justify-center mt-0.5`}>
+                                                {item.icon}
+                                            </div>
+                                            <div className="flex-1">
+                                                <h4 className="text-[17px] font-semibold text-gray-900 dark:text-white mb-1">
+                                                    {item.title}
+                                                </h4>
+                                                <p className="text-[15px] text-gray-500 dark:text-gray-400 leading-snug">
+                                                    {item.description}
+                                                </p>
+                                            </div>
+                                        </div>
+                                        {index < arr.length - 1 && (
+                                            <div className="absolute bottom-0 left-[72px] right-0 h-[1px] bg-black/10 dark:bg-white/10" />
+                                        )}
                                     </div>
-                                    <div className="flex-1">
-                                        <h4 className="text-[17px] font-semibold text-gray-900 dark:text-white mb-1">
-                                            {item.title}
-                                        </h4>
-                                        <p className="text-[15px] text-gray-500 dark:text-gray-400 leading-snug">
-                                            {item.description}
-                                        </p>
-                                    </div>
-                                </div>
-                                {index < arr.length - 1 && (
-                                    <div className="absolute bottom-0 left-[72px] right-0 h-[1px] bg-gray-200 dark:bg-gray-700/60" />
-                                )}
-                            </div>
-                        ))}
-                    </div>
-                    <div className="mt-6 flex items-start gap-3 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-xl">
-                        <Info className="w-5 h-5 text-blue-600 dark:text-blue-400 shrink-0 mt-0.5" />
-                        <p className="text-[13px] text-blue-700 dark:text-blue-300 leading-normal">
-                            El uso de VPNs gratuitas no garantiza la seguridad ante malware incrustado en los reproductores de video de estos sitios.
-                        </p>
+                                );
+                            })}
+                        </div>
+                        <div className="mt-6 flex items-start gap-3 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-xl">
+                            <Info className="w-5 h-5 text-blue-600 dark:text-blue-400 shrink-0 mt-0.5" />
+                            <p className="text-[13px] text-blue-700 dark:text-blue-300 leading-normal">
+                                El uso de VPNs gratuitas no garantiza la seguridad ante malware incrustado en los reproductores de video de estos sitios.
+                            </p>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -537,12 +598,15 @@ export const RisksModal: React.FC<RisksModalProps> = ({ isOpen, onClose }) => {
 
   if (isDesktop) {
     return (
-      <div className={`fixed inset-0 z-50 flex items-center justify-center p-4 duration-500 transition-all ${isOpen ? 'visible' : 'invisible delay-300'}`}>
+      <div className={`fixed inset-0 z-50 flex items-center justify-center p-4 ${isOpen ? 'visible' : 'invisible delay-[800ms] pointer-events-none'}`}>
         <div 
-            className={`absolute inset-0 bg-black/[0.13] transition-all duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] ${isOpen ? 'opacity-100 backdrop-blur-[15px]' : 'opacity-0 backdrop-blur-[0px]'}`}
+            className={`absolute inset-0 bg-black/[0.13] transition-all duration-[800ms] ease-[cubic-bezier(0.32,0.72,0,1)] ${isOpen ? 'opacity-100' : 'opacity-0'}`}
             onClick={onClose}
         />
-        <div className={`relative w-[480px] max-h-[85vh] h-auto flex flex-col overflow-hidden bg-[#F2F2F7] dark:bg-[#1c1c1e] rounded-[16px] shadow-2xl transform transition-all duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] border border-white/10 ${isOpen ? 'scale-100 opacity-100' : 'scale-95 opacity-0'}`}>
+        <div 
+            style={{ height: isDesktop ? (menuHeight ? `${menuHeight}px` : 'auto') : '100%' }}
+            className={`relative w-[480px] ${isDesktop ? 'max-h-[85vh]' : 'h-[85vh]'} flex flex-col overflow-hidden isolation-isolate bg-[#F2F2F7]/70 dark:bg-[#1c1c1e]/70 rounded-[16px] shadow-2xl transform transition-all duration-[800ms] ease-[cubic-bezier(0.32,0.72,0,1)] ${isOpen ? 'translate-y-0' : 'translate-y-[100vh]'} transition-[height]`}
+        >
             {content}
         </div>
       </div>
@@ -560,16 +624,16 @@ export const RisksModal: React.FC<RisksModalProps> = ({ isOpen, onClose }) => {
     >
       <Drawer.Portal>
         <Drawer.Overlay 
-          className="fixed inset-0 bg-black/[0.13] z-50 transition-opacity duration-[1000ms]"
+          className="fixed inset-0 bg-black/[0.13] z-50 transition-opacity duration-[800ms]"
         />
-        <Drawer.Content className="bg-[#F2F2F7] dark:bg-[#1c1c1e] flex flex-col rounded-t-[13px] fixed bottom-0 left-0 right-0 z-50 outline-none shadow-2xl h-[calc(90.7vh-0.84px)] landscape:rounded-t-[13px] landscape:rounded-b-none landscape:left-[19px] landscape:right-[19px] landscape:bottom-0 landscape:mx-auto landscape:max-w-lg">
+        <Drawer.Content className="bg-[#F2F2F7] dark:bg-[#1E1E20] flex flex-col rounded-t-[13px] fixed bottom-0 left-0 right-0 z-50 outline-none shadow-2xl h-[calc(90.7vh-0.84px)] landscape:rounded-t-[13px] landscape:rounded-b-none landscape:left-[19px] landscape:right-[19px] landscape:bottom-0 landscape:mx-auto landscape:max-w-lg">
             
             <Drawer.Title className="sr-only">Riesgos y Seguridad</Drawer.Title>
             <Drawer.Description className="sr-only">Detalles sobre riesgos legales y de seguridad</Drawer.Description>
 
             <div className="absolute top-2 left-1/2 -translate-x-1/2 w-10 h-1.5 rounded-full bg-gray-300 dark:bg-gray-600 z-50 pointer-events-none opacity-80" />
 
-            <div className="flex-1 relative bg-[#F2F2F7] dark:bg-[#1c1c1e] overflow-hidden rounded-t-[13px] landscape:rounded-t-[13px] landscape:rounded-b-none">
+            <div className="flex-1 relative bg-[#F2F2F7] dark:bg-[#1E1E20] overflow-hidden rounded-t-[13px] landscape:rounded-t-[13px] landscape:rounded-b-none">
                  {content}
             </div>
         </Drawer.Content>

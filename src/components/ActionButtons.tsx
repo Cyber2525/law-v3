@@ -5,15 +5,19 @@ import { IOSAlert } from './IOSAlert';
 interface ActionButtonsProps {
   onOpenStreaming: () => void;
   onEnableDebug?: () => void;
-  isStreamingCooldown?: boolean;
   isStreamingOpen?: boolean;
+  isRisksOpen?: boolean;
+  isStreamingCooldown?: boolean;
+  isRisksCooldown?: boolean;
 }
 
 export const ActionButtons: React.FC<ActionButtonsProps> = ({ 
   onOpenStreaming, 
   onEnableDebug,
+  isStreamingOpen = false,
+  isRisksOpen = false,
   isStreamingCooldown = false,
-  isStreamingOpen = false
+  isRisksCooldown = false
 }) => {
   const [isAlertOpen, setIsAlertOpen] = useState(false);
   const externalLink = "https://www.cultura.gob.es/cultura/propiedadintelectual/lucha-contra-la-pirateria.html";
@@ -109,8 +113,10 @@ export const ActionButtons: React.FC<ActionButtonsProps> = ({
     closeAlert();
   };
 
-  // El botón es gris si el modal está abierto O si está en cooldown tras cerrar
-  const isInactive = isStreamingOpen || isStreamingCooldown;
+  // El botón azul (alternativas legales) es gris SOLO si el modal de streaming está abierto O en cooldown de streaming
+  const isStreamingInactive = isStreamingOpen || isStreamingCooldown;
+  // El link externo solo se bloquea si el modal de streaming está abierto
+  const isLinkInactive = isStreamingOpen;
 
   return (
     <>
@@ -118,7 +124,8 @@ export const ActionButtons: React.FC<ActionButtonsProps> = ({
         <div className="flex flex-col gap-4 landscape:flex-row w-full">
           <button 
             onClick={() => window.location.href = 'https://www.google.com'}
-            className="w-full h-14 min-h-[56px] landscape:flex-none landscape:w-[38%] shrink-0 glass-panel bg-white/60 dark:bg-white/10 hover:bg-white/80 dark:hover:bg-white/15 border-2 border-black/5 dark:border-white/10 active:scale-[0.94] transition-all duration-300 rounded-2xl font-medium text-lg flex items-center justify-center text-gray-900 dark:text-white"
+            style={{ willChange: 'background-color, border-color, color' }}
+            className="w-full h-14 min-h-[56px] landscape:flex-none landscape:w-[38%] shrink-0 bg-white/60 dark:bg-white/10 hover:bg-white/80 dark:hover:bg-white/15 border-2 border-black/5 dark:border-white/10 active:scale-[0.94] transition-all duration-300 rounded-2xl font-medium text-lg flex items-center justify-center text-gray-900 dark:text-white cursor-pointer"
           >
             <ArrowLeft className="w-5 h-5 mr-2 text-black dark:text-white transition-colors duration-300" />
             Volver atrás
@@ -126,17 +133,17 @@ export const ActionButtons: React.FC<ActionButtonsProps> = ({
 
           <button 
             onClick={onOpenStreaming}
-            disabled={isInactive}
+            disabled={isStreamingInactive}
             className={`
               w-full h-14 min-h-[56px] landscape:flex-1 shrink-0 
               rounded-2xl font-semibold text-lg flex items-center justify-center shadow-lg transition-all duration-300
-              ${isInactive 
+              ${isStreamingInactive 
                 ? 'bg-gray-400 dark:bg-gray-700 shadow-none cursor-not-allowed text-gray-200 dark:text-gray-500' 
                 : 'bg-blue-600 dark:bg-blue-500 hover:bg-blue-500 dark:hover:bg-blue-400 active:scale-[0.94] shadow-blue-500/20 text-white cursor-pointer'
               }
             `}
           >
-            <PlayCircle className={`w-5 h-5 mr-2 transition-colors duration-300 ${isInactive ? 'text-gray-200 dark:text-gray-500' : 'text-white'}`} />
+            <PlayCircle className={`w-5 h-5 mr-2 transition-colors duration-300 ${isStreamingInactive ? 'text-gray-200 dark:text-gray-500' : 'text-white'}`} />
             alternativas legales
           </button>
         </div>
@@ -149,7 +156,12 @@ export const ActionButtons: React.FC<ActionButtonsProps> = ({
             onMouseLeave={handleMouseUp}
             onTouchStart={handleMouseDown}
             onTouchEnd={handleMouseUp}
-            className="text-base text-gray-400 dark:text-gray-600 hover:text-gray-600 dark:hover:text-gray-300 flex items-center transition-colors duration-300 outline-none select-none"
+            disabled={isLinkInactive}
+            className={`text-base flex items-center transition-colors duration-300 outline-none select-none ${
+                isLinkInactive 
+                ? 'text-gray-400 dark:text-gray-700 cursor-not-allowed' 
+                : 'text-gray-400 dark:text-gray-600 hover:text-gray-600 dark:hover:text-gray-300 cursor-pointer'
+            }`}
           >
               🇪🇸 Ministerio de Cultura y Deporte <ExternalLink className="w-5 h-5 ml-1" />
           </button>

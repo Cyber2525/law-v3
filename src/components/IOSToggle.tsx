@@ -168,7 +168,8 @@ export const IOSToggle: React.FC<IOSToggleProps> = ({
         aria-disabled={disabled}
         style={{
             transform: `scale(${scale})`,
-            transformOrigin: 'top left'
+            transformOrigin: 'top left',
+            willChange: 'background-color'
         }}
         >
             {/* The Knob */}
@@ -177,7 +178,8 @@ export const IOSToggle: React.FC<IOSToggleProps> = ({
                 style={{
                     width: `${currentKnobWidth}px`,
                     left: `${currentPos}px`,
-                    transition: 'all 0.3s cubic-bezier(0.32,0.72,0,1)'
+                    transition: 'all 0.3s cubic-bezier(0.32,0.72,0,1)',
+                    willChange: 'width, left'
                 }}
             />
         </div>

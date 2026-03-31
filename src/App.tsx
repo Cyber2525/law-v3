@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { IOSHeader } from './components/IOSHeader';
 import { ActionButtons } from './components/ActionButtons';
 import { StreamingModal } from './components/StreamingModal';
@@ -19,18 +19,68 @@ const App: React.FC = () => {
   const [risksModalOpen, setRisksModalOpen] = useState(false);
   const [hasViewedRisks, setHasViewedRisks] = useState(false);
   const [isStreamingCooldown, setIsStreamingCooldown] = useState(false);
+  const [isRisksCooldown, setIsRisksCooldown] = useState(false);
   const [isAnimating, setIsAnimating] = useState(false);
 
-  // Manage isAnimating state to sync with drawer transitions
+  // Refs for cooldown timers and transition state to prevent race conditions
+  const streamingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const risksTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const isTransitioningRef = useRef(false);
+  const isInitialMount = useRef(true);
+
+  // Manage global CSS variables and transition state
   useEffect(() => {
     const isOpen = risksModalOpen || streamingModalOpen;
+    const isDesktop = window.matchMedia('(min-width: 600px) and (min-height: 600px)').matches;
+
+    if (isInitialMount.current) {
+      isInitialMount.current = false;
+      document.documentElement.style.setProperty('--drawer-transition-duration', '0s');
+      document.documentElement.style.setProperty('--drawer-progress', '0');
+      if (!isOpen) return; // Skip closing animation on mount
+    }
+
     if (isOpen) {
       setIsAnimating(true);
+      isTransitioningRef.current = true;
+      
+      if (!isDesktop) {
+        // Prepare starting state
+        document.documentElement.style.setProperty('--drawer-transition-duration', '0s');
+        document.documentElement.style.setProperty('--drawer-progress', '0');
+        
+        // Trigger animation
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => {
+            document.documentElement.style.setProperty('--drawer-transition-duration', '0.5s');
+            document.documentElement.style.setProperty('--drawer-progress', '1');
+          });
+        });
+      } else {
+        document.documentElement.style.setProperty('--drawer-transition-duration', '0s');
+        document.documentElement.style.setProperty('--drawer-progress', '0');
+      }
+
+      const timer = setTimeout(() => {
+        isTransitioningRef.current = false;
+      }, 500);
+      return () => clearTimeout(timer);
     } else {
-      // Wait for the 0.8s transition to finish before showing the filler
+      isTransitioningRef.current = true;
+      
+      if (!isDesktop) {
+        document.documentElement.style.setProperty('--drawer-transition-duration', '0.5s');
+        document.documentElement.style.setProperty('--drawer-progress', '0');
+      } else {
+        document.documentElement.style.setProperty('--drawer-transition-duration', '0s');
+        document.documentElement.style.setProperty('--drawer-progress', '0');
+      }
+
       const timer = setTimeout(() => {
         setIsAnimating(false);
-      }, 800);
+        isTransitioningRef.current = false;
+        document.documentElement.style.setProperty('--drawer-transition-duration', '0s');
+      }, 300);
       return () => clearTimeout(timer);
     }
   }, [risksModalOpen, streamingModalOpen]);
@@ -65,25 +115,34 @@ const App: React.FC = () => {
   }, []);
 
   const openStreamingModal = useCallback(() => {
-      if (isStreamingCooldown || streamingModalOpen) return;
+      // Prevent opening if already open, in cooldown, or transitioning
+      if (isStreamingCooldown || streamingModalOpen || risksModalOpen || isTransitioningRef.current) return;
+      
+      isTransitioningRef.current = true;
       window.history.pushState({ ...window.history.state, modal: 'streaming' }, '');
       setStreamingModalOpen(true);
-  }, [isStreamingCooldown, streamingModalOpen]);
+  }, [isStreamingCooldown, streamingModalOpen, risksModalOpen]);
 
   /**
    * Cierra el modal de streaming
    * @param wasInSubpage Indica si el usuario estaba en una categoría al cerrar
    */
   const closeStreamingModal = useCallback((wasInSubpage: boolean = false) => {
+      if (!streamingModalOpen || isTransitioningRef.current) return;
+      
+      isTransitioningRef.current = true;
       // 1. Cerramos el modal visualmente
       setStreamingModalOpen(false);
       
       // 2. Activamos el cooldown SIEMPRE para dar feedback visual y bloqueo en el botón.
-      // - Desde subpágina: 1.5s (permite limpiar navegación interna)
-      // - Desde raíz: 1s (rápido, pero da feedback de cierre)
+      if (streamingTimerRef.current) clearTimeout(streamingTimerRef.current);
+      
       setIsStreamingCooldown(true);
-      const cooldownTime = wasInSubpage ? 1500 : 1000;
-      setTimeout(() => setIsStreamingCooldown(false), cooldownTime);
+      const cooldownTime = wasInSubpage ? 1000 : 500;
+      streamingTimerRef.current = setTimeout(() => {
+          setIsStreamingCooldown(false);
+          streamingTimerRef.current = null;
+      }, cooldownTime);
 
       // 3. Limpiamos el historial de navegación interna del modal
       const state = window.history.state || {};
@@ -95,20 +154,36 @@ const App: React.FC = () => {
       if (depth > 0) {
           window.history.go(-depth);
       }
-  }, []);
+  }, [streamingModalOpen]);
 
-  const openRisksModal = () => {
+  const openRisksModal = useCallback(() => {
+      if (isRisksCooldown || risksModalOpen || streamingModalOpen || isTransitioningRef.current) return;
+      
+      isTransitioningRef.current = true;
       setHasViewedRisks(true);
       window.history.pushState({ ...window.history.state, modal: 'risks' }, '');
       setRisksModalOpen(true);
-  };
+  }, [isRisksCooldown, risksModalOpen, streamingModalOpen]);
 
-  const closeRisksModal = () => {
+  const closeRisksModal = useCallback(() => {
+      if (!risksModalOpen || isTransitioningRef.current) return;
+      
+      isTransitioningRef.current = true;
       setRisksModalOpen(false);
+      
+      // Cooldown for Risks button (500ms)
+      if (risksTimerRef.current) clearTimeout(risksTimerRef.current);
+      
+      setIsRisksCooldown(true);
+      risksTimerRef.current = setTimeout(() => {
+          setIsRisksCooldown(false);
+          risksTimerRef.current = null;
+      }, 500);
+
       if (window.history.state?.modal === 'risks') {
           window.history.back();
       }
-  };
+  }, [risksModalOpen]);
   // -------------------------------------
 
   useEffect(() => {
@@ -131,17 +206,12 @@ const App: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-black relative">
-      {/* Filler Background to hide rounded corners when static */}
-      <div 
-        className={`fixed inset-0 z-0 transition-colors duration-300 ${isAnimating ? 'opacity-0' : 'opacity-100'} ${isDarkMode ? 'bg-black' : 'bg-[#F2F2F7]'}`} 
-      />
-
-      <div vaul-drawer-wrapper="" className={`min-h-screen ${isDarkMode ? 'dark' : ''} relative z-10 overflow-hidden transition-colors duration-300`}>
+    <div className="min-h-screen bg-[#0a0a0a] relative">
+      <div vaul-drawer-wrapper="" className={`min-h-screen ${isDarkMode ? 'dark' : ''} relative z-10 overflow-hidden`}>
         <div className={`min-h-screen flex flex-col items-center relative overflow-hidden transition-colors duration-300 ${isDarkMode ? 'text-white selection:bg-red-500/30' : 'text-black selection:bg-blue-500/30'}`}>
           
           {/* Base Background Layer */}
-          <div className={`absolute inset-0 transition-colors duration-300 ${isDarkMode ? 'bg-black' : 'bg-[#F2F2F7]'}`} />
+          <div className={`absolute inset-0 transition-colors duration-300 ${isDarkMode ? 'bg-[#0a0a0a]' : 'bg-[#F2F2F7]'}`} />
           
           {/* Smalling Dark Mode Overlay */}
           <div 
@@ -157,19 +227,23 @@ const App: React.FC = () => {
         <IOSHeader 
             onOpenRisks={openRisksModal} 
             stopAnimation={hasViewedRisks}
+            isRisksCooldown={isRisksCooldown}
+            isRisksOpen={risksModalOpen}
         />
         
         <div className="absolute top-6 right-6 z-30 landscape:top-[70px] landscape:right-6 md:top-[70px] md:right-6 transition-all duration-300">
             <DebugOSOverride isVisible={isDebugVisible} onDisable={disableDebugMode} />
         </div>
 
-        <div className={`
-            flex items-center gap-3 bg-white/80 dark:bg-[#1c1c1e]/80 backdrop-blur-md pl-4 pr-1 py-1 rounded-full border border-black/5 dark:border-white/10 transition-colors duration-300 z-30
+        <div 
+            style={{ willChange: 'background-color, border-color, color' }}
+            className={`
+            flex items-center gap-3 bg-white dark:bg-[rgba(24,24,26,0.70)] backdrop-blur-xl pl-4 pr-1 py-1 rounded-full border border-black/5 dark:border-white/10 transition-all duration-300 z-30
             relative -mt-[15px] mb-6
             landscape:absolute landscape:top-[17px] landscape:right-6 landscape:mt-0 landscape:mb-0
             md:absolute md:top-[17px] md:right-6 md:mt-0 md:mb-0
         `}>
-            <span className="text-[15px] font-medium text-gray-900 dark:text-white mr-1 select-none">Modo Oscuro</span>
+            <span className="text-[15px] font-medium text-gray-900 dark:text-white mr-1 select-none transition-colors duration-300">Modo Oscuro</span>
             <IOSToggle checked={isDarkMode} onChange={setIsDarkMode} />
         </div>
         
@@ -180,6 +254,8 @@ const App: React.FC = () => {
           onEnableDebug={enableDebugMode}
           isStreamingCooldown={isStreamingCooldown}
           isStreamingOpen={streamingModalOpen}
+          isRisksCooldown={isRisksCooldown}
+          isRisksOpen={risksModalOpen}
         />
       </div>
 

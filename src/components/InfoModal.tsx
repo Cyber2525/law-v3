@@ -15,12 +15,12 @@ export const InfoModal: React.FC<InfoModalProps> = ({ isOpen, onClose, data }) =
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center sm:p-4">
       {/* Backdrop */}
       <div 
-        className="absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity" 
+        className="absolute inset-0 bg-black/60 sm:backdrop-blur-none backdrop-blur-sm transition-opacity" 
         onClick={onClose}
       />
 
       {/* Modal Content */}
-      <div className="relative w-full max-w-lg bg-[#1c1c1e] sm:rounded-3xl rounded-t-3xl shadow-2xl overflow-hidden transform transition-all animate-in slide-in-from-bottom-10 duration-300 border border-white/10">
+      <div className="relative w-full max-w-lg bg-[#1c1c1e] sm:rounded-3xl rounded-t-3xl shadow-2xl overflow-hidden transform transition-all animate-in fade-in-100 sm:slide-in-from-bottom-full slide-in-from-bottom-32 duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] border border-white/10">
         
         {/* Handle bar for mobile feeling */}
         <div className="w-full flex justify-center pt-3 pb-1 sm:hidden">

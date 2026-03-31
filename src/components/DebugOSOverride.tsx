@@ -303,10 +303,9 @@ export const DebugOSOverride: React.FC<DebugOSOverrideProps> = ({ isVisible = fa
                 onPointerCancel={() => { setHighlightedId(null); setIsSliding(false); }}
                 className={`
                     fixed w-[250px] 
-                    bg-[#F9F9F9]/90 dark:bg-[#252525]/90 backdrop-blur-xl backdrop-saturate-[180%] 
+                    bg-[#F9F9F9]/90 dark:bg-[#2c2c2e]/90 backdrop-blur-xl backdrop-saturate-[180%] 
                     rounded-[14px] shadow-2xl overflow-hidden 
                     origin-top-right 
-                    dark:border dark:border-white/10
                     transition-all will-change-transform touch-none select-none
                     z-[99991]
                     ${isVisibleState 
@@ -315,9 +314,10 @@ export const DebugOSOverride: React.FC<DebugOSOverrideProps> = ({ isVisible = fa
                 `}
             >
               <div className="flex flex-col">
-                 {options.map((opt) => {
+                 {options.map((opt, idx) => {
                      const isSelected = override === opt.id;
                      const isHighlighted = highlightedId === opt.id;
+                     const isNextHighlighted = highlightedId === options[idx + 1]?.id;
                      const durationClass = (isSliding || isInitialDragActive) ? 'duration-0' : 'duration-200';
 
                      return (
@@ -344,11 +344,13 @@ export const DebugOSOverride: React.FC<DebugOSOverrideProps> = ({ isVisible = fa
                             <div className="shrink-0 ml-3 text-black dark:text-white opacity-100 pointer-events-none">
                                 {opt.icon}
                             </div>
-                            <div className="absolute bottom-0 right-0 left-0 h-[1px] bg-gray-300/40 dark:bg-white/10 pointer-events-none" />
+                            {idx < options.length - 1 && (
+                                <div className={`absolute bottom-0 right-0 left-0 h-[1px] ${isHighlighted || isNextHighlighted ? 'bg-transparent' : 'bg-gray-300/40 dark:bg-white/10'} pointer-events-none`} />
+                            )}
                         </button>
                      );
                  })}
-                 <div className="h-2 bg-gray-300/40 dark:bg-white/10" />
+                 <div className="h-2 bg-gray-300/40 dark:bg-black/20" />
                  <button
                     data-option-id="disable_debug"
                     className={`
