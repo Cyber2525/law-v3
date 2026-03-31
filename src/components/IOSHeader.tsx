@@ -1,3 +1,4 @@
+import React from 'react';
 import { motion } from 'motion/react';
 import { ShieldAlert } from 'lucide-react';
 import { TbPointer } from "react-icons/tb";

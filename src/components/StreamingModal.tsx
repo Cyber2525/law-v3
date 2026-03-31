@@ -143,7 +143,7 @@ export const StreamingModal: React.FC<StreamingModalProps> = ({ isOpen, onClose 
     if (!isOpen) {
       const timer = setTimeout(() => {
         setActiveCategory(null);
-      }, 800);
+      }, 500);
       return () => clearTimeout(timer);
     }
   }, [isOpen]);
@@ -195,7 +195,7 @@ export const StreamingModal: React.FC<StreamingModalProps> = ({ isOpen, onClose 
 
   const handleRelease = (e: React.PointerEvent<HTMLDivElement>, open: boolean) => {
     document.documentElement.removeAttribute('data-drawer-dragging');
-    document.documentElement.style.setProperty('--drawer-transition-duration', '0.8s');
+    document.documentElement.style.setProperty('--drawer-transition-duration', '0.5s');
     document.documentElement.style.setProperty('--drawer-progress', open ? '1' : '0');
   };
   // ------------------------------------------------
@@ -203,15 +203,15 @@ export const StreamingModal: React.FC<StreamingModalProps> = ({ isOpen, onClose 
   // --- Render Desktop ---
   if (isDesktop) {
     return (
-      <div className={`fixed inset-0 z-50 flex items-center justify-center p-4 ${isOpen ? 'visible' : 'invisible delay-[800ms] pointer-events-none'}`}>
+      <div className={`fixed inset-0 z-50 flex items-center justify-center p-4 ${isOpen ? 'visible' : 'invisible delay-[500ms] pointer-events-none'}`}>
         {/* Backdrop */}
         <div 
-            className={`absolute inset-0 bg-black/[0.13] transition-all duration-[800ms] ease-[cubic-bezier(0.32,0.72,0,1)] ${isOpen ? 'opacity-100' : 'opacity-0'}`}
+            className={`absolute inset-0 bg-black/[0.13] transition-all duration-[500ms] ease-[cubic-bezier(0.32,0.72,0,1)] ${isOpen ? 'opacity-100' : 'opacity-0'}`}
             onClick={handleManualClose}
         />
         
         {/* Modal Container */}
-        <div className={`relative w-[420px] overflow-hidden isolation-isolate bg-[#F2F2F7]/70 dark:bg-[#1c1c1e]/70 rounded-[16px] shadow-2xl transform transition-all duration-[800ms] ease-[cubic-bezier(0.32,0.72,0,1)] ${isOpen ? 'translate-y-0' : 'translate-y-[100vh]'}`}>
+        <div className={`relative w-[420px] overflow-hidden isolation-isolate bg-[#F2F2F7]/70 dark:bg-[#1c1c1e]/70 rounded-[16px] shadow-2xl transform transition-all duration-[500ms] ease-[cubic-bezier(0.32,0.72,0,1)] ${isOpen ? 'translate-y-0' : 'translate-y-[100vh]'}`}>
             <div className="absolute inset-0 backdrop-blur-xl -z-10 hidden md:block" />
             <IOSNavigationStack 
                 activeCategory={activeCategory}
@@ -242,7 +242,7 @@ export const StreamingModal: React.FC<StreamingModalProps> = ({ isOpen, onClose 
     >
       <Drawer.Portal>
         <Drawer.Overlay 
-          className="fixed inset-0 bg-black/[0.13] z-50 transition-opacity duration-[800ms]"
+          className="fixed inset-0 bg-black/[0.13] z-50 transition-opacity duration-[500ms]"
         />
         <Drawer.Content className={`bg-[#F2F2F7] dark:bg-[#1c1c1e] flex flex-col rounded-t-[13px] fixed bottom-0 left-0 right-0 z-50 outline-none shadow-2xl ${isLandscape ? 'landscape:rounded-t-[13px] landscape:rounded-b-none landscape:left-[19px] landscape:right-[19px] landscape:bottom-0 landscape:mx-auto landscape:max-w-lg' : 'h-[calc(90.7vh-0.84px)]'}`}>
             
@@ -287,7 +287,7 @@ interface NavigationProps {
     isDarkMode: boolean;
 }
 
-const TRANSITION_CLASSES = "all 800ms cubic-bezier(0.32,0.72,0,1)";
+const TRANSITION_CLASSES = "all 500ms cubic-bezier(0.32,0.72,0,1)";
 
 const IOSNavigationStack: React.FC<NavigationProps> = ({ 
     activeCategory, 
@@ -355,7 +355,7 @@ const IOSNavigationStack: React.FC<NavigationProps> = ({
                 setScrollProgress(destScroll);
             }
 
-            const timer = setTimeout(() => setNavTransitionType('none'), 1000); // 800ms slide + 200ms blur
+            const timer = setTimeout(() => setNavTransitionType('none'), 700); // 500ms slide + 200ms blur
             prevCategoryRef.current = activeCategory;
             return () => clearTimeout(timer);
         }
@@ -691,9 +691,9 @@ const IOSNavigationStack: React.FC<NavigationProps> = ({
 
     let transitionStyle = 'none';
     if (navTransitionType === 'fade-out') {
-        transitionStyle = 'background-color 800ms cubic-bezier(0.32,0.72,0,1), backdrop-filter 200ms ease-in-out 800ms, -webkit-backdrop-filter 200ms ease-in-out 800ms';
+        transitionStyle = 'background-color 500ms cubic-bezier(0.32,0.72,0,1), backdrop-filter 200ms ease-in-out 500ms, -webkit-backdrop-filter 200ms ease-in-out 500ms';
     } else if (navTransitionType === 'fade-in') {
-        transitionStyle = 'background-color 800ms cubic-bezier(0.32,0.72,0,1), backdrop-filter 200ms ease-in-out 0ms, -webkit-backdrop-filter 200ms ease-in-out 0ms';
+        transitionStyle = 'background-color 500ms cubic-bezier(0.32,0.72,0,1), backdrop-filter 200ms ease-in-out 0ms, -webkit-backdrop-filter 200ms ease-in-out 0ms';
     }
 
     return (
@@ -769,7 +769,7 @@ const IOSNavigationStack: React.FC<NavigationProps> = ({
             <div 
                 ref={contentWrapperRef}
                 style={{ height: (isDesktop || isLandscape) ? (menuHeight ? `${menuHeight}px` : 'auto') : '100%' }} 
-                className={`relative w-full overflow-hidden ${(isDesktop || isLandscape) ? 'transition-[height]' : 'flex-1 h-full'} ${isModalOpen ? 'duration-[800ms]' : 'duration-0'} ease-[cubic-bezier(0.32,0.72,0,1)]`}
+                className={`relative w-full overflow-hidden ${(isDesktop || isLandscape) ? 'transition-[height]' : 'flex-1 h-full'} ${isModalOpen ? 'duration-[500ms]' : 'duration-0'} ease-[cubic-bezier(0.32,0.72,0,1)]`}
                 onPointerDown={onPointerDown}
                 onPointerMove={onPointerMove}
                 onPointerUp={onPointerUp}
