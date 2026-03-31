@@ -88,9 +88,10 @@ export const ActionButtons: React.FC<ActionButtonsProps> = ({
         <div className="flex flex-col gap-4 landscape:flex-row w-full">
           <motion.button 
             onClick={() => window.location.href = 'https://www.google.com'}
-            whileTap={{ opacity: 0.5 }}
-            style={{ willChange: 'background-color, border-color, color' }}
-            className="w-full h-14 min-h-[56px] landscape:flex-none landscape:w-[38%] shrink-0 bg-white/60 dark:bg-white/10 hover:bg-white/80 dark:hover:bg-white/15 border-2 border-black/5 dark:border-white/10 transition-all duration-300 rounded-2xl font-medium text-lg flex items-center justify-center text-gray-900 dark:text-white cursor-pointer"
+            whileTap={{ scale: 0.92 }}
+            transition={{ type: 'spring', stiffness: 600, damping: 30 }}
+            style={{ willChange: 'transform, background-color, border-color, color' }}
+            className="w-full h-14 min-h-[56px] landscape:flex-none landscape:w-[38%] shrink-0 bg-white/60 dark:bg-white/10 hover:bg-white/80 dark:hover:bg-white/15 border-2 border-black/5 dark:border-white/10 transition-[background-color,border-color,color] duration-300 rounded-2xl font-medium text-lg flex items-center justify-center text-gray-900 dark:text-white cursor-pointer"
           >
             <ArrowLeft className="w-5 h-5 mr-2 text-black dark:text-white transition-colors duration-300" />
             Volver atrás
@@ -99,10 +100,11 @@ export const ActionButtons: React.FC<ActionButtonsProps> = ({
           <motion.button 
             onClick={onOpenStreaming}
             disabled={isStreamingInactive}
-            whileTap={!isStreamingInactive ? { opacity: 0.5 } : {}}
+            whileTap={!isStreamingInactive ? { scale: 0.92 } : {}}
+            transition={{ type: 'spring', stiffness: 600, damping: 30 }}
             className={`
               w-full h-14 min-h-[56px] landscape:flex-1 shrink-0 
-              rounded-2xl font-semibold text-lg flex items-center justify-center shadow-lg transition-all duration-300
+              rounded-2xl font-semibold text-lg flex items-center justify-center shadow-lg transition-[background-color,border-color,color,box-shadow] duration-300
               ${isStreamingInactive 
                 ? 'bg-gray-400 dark:bg-gray-700 shadow-none cursor-not-allowed text-gray-200 dark:text-gray-500' 
                 : 'bg-blue-600 dark:bg-blue-500 hover:bg-blue-500 dark:hover:bg-blue-400 shadow-blue-500/20 text-white cursor-pointer'

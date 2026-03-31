@@ -33,9 +33,10 @@ export const IOSHeader: React.FC<IOSHeaderProps> = ({
         <motion.button 
           onClick={handleShieldClick}
           disabled={isInactive}
-          whileTap={!isInactive ? { opacity: 0.5 } : {}}
+          whileTap={!isInactive ? { scale: 0.92 } : {}}
+          transition={{ type: 'spring', stiffness: 600, damping: 30 }}
           className={`
-            relative w-24 h-24 rounded-[2rem] flex items-center justify-center transition-all duration-300 z-10 outline-none focus-visible:ring-4 focus-visible:ring-red-500/50
+            relative w-24 h-24 rounded-[2rem] flex items-center justify-center transition-[background-color,border-color,box-shadow] duration-300 z-10 outline-none focus-visible:ring-4 focus-visible:ring-red-500/50
             ${isInactive 
               ? 'bg-gray-400 dark:bg-gray-700 border-gray-400 dark:border-gray-700 shadow-none cursor-not-allowed scale-100' 
               : 'bg-red-500 border border-white/20 dark:border-white/10 shadow-2xl shadow-red-500/30 cursor-pointer'
