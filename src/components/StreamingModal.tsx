@@ -535,7 +535,6 @@ const IOSNavigationStack: React.FC<NavigationProps> = ({
 
     const onPointerDown = (e: React.PointerEvent) => {
         if (!activeCategory) return;
-        (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
         touchStartX.current = e.clientX;
         touchStartY.current = e.clientY;
         previousMoveX.current = e.clientX;
@@ -561,6 +560,7 @@ const IOSNavigationStack: React.FC<NavigationProps> = ({
             if (absX > 5 || absY > 5) {
                 if (absX > absY) {
                     isHorizontalSwipeRef.current = true;
+                    try { (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId); } catch(err) {}
                 } else {
                     isHorizontalSwipeRef.current = false;
                 }
@@ -710,7 +710,7 @@ const IOSNavigationStack: React.FC<NavigationProps> = ({
                 }}
             >
                 {/* Back Button Area */}
-                <motion.button 
+                <button 
                     onPointerDown={(e) => e.stopPropagation()}
                     onPointerUp={(e) => {
                         if (activeCategory) {
@@ -718,15 +718,14 @@ const IOSNavigationStack: React.FC<NavigationProps> = ({
                             onBack();
                         }
                     }}
-                    whileTap={{ opacity: 0.5 }}
                     disabled={!activeCategory}
-                    className={`absolute top-0 left-0 h-full pl-4 pr-12 flex items-center text-[#007AFF] transition-all duration-300 z-50 touch-none pointer-events-auto cursor-pointer ${
+                    className={`absolute top-0 left-0 h-full pl-4 pr-12 flex items-center text-[#007AFF] transition-all duration-300 z-50 touch-none pointer-events-auto cursor-pointer active:opacity-50 ${
                         activeCategory ? 'opacity-100' : 'opacity-0 pointer-events-none'
                     }`}
                 >
                     <ChevronLeft className="w-8 h-8 -ml-1" strokeWidth={2.5} />
                     <span className="text-[20px] leading-none pb-0.5 font-normal">Atrás</span>
-                </motion.button>
+                </button>
 
                 {/* Title Area */}
                 <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
