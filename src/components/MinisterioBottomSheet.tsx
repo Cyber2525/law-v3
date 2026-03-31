@@ -111,29 +111,29 @@ export const MinisterioBottomSheet: React.FC<MinisterioBottomSheetProps> = ({ is
             className="w-full h-full object-cover bg-white" 
           />
         </div>
-        <h2 className="text-[24px] font-bold text-black dark:text-white mb-0 tracking-tight">Ministerio de cultura</h2>
-        <p className="text-[#8e8e93] dark:text-gray-400 text-[14px]">+34 917 017 000</p>
+        <h2 className="text-[26px] font-bold text-black dark:text-white mb-0 tracking-tight">Ministerio de cultura</h2>
+        <p className="text-[#8e8e93] dark:text-gray-400 text-[15px]">+34 917 017 000</p>
       </div>
 
       <div className="px-4 pb-4 flex flex-col gap-3">
         <div className="flex justify-center gap-3">
-          <button onClick={handleWeb} className="flex-1 bg-white dark:bg-[#2c2c2e] rounded-[10px] pt-[14px] pb-[6px] flex flex-col items-center justify-center gap-1.5 active:bg-[#e5e5ea] dark:active:bg-[#3a3a3c] transition-colors">
-            <Link className="w-[20px] h-[20px] text-black dark:text-white" strokeWidth={1.5} />
-            <span className="text-[11px] text-black dark:text-white font-normal">Web</span>
+          <button onClick={handleWeb} className="flex-1 bg-white dark:bg-[#2c2c2e] rounded-[10px] pt-[18px] pb-[10px] flex flex-col items-center justify-center gap-1.5 active:bg-[#e5e5ea] dark:active:bg-[#3a3a3c] transition-colors">
+            <Link className="w-[22px] h-[22px] text-black dark:text-white" strokeWidth={1.5} />
+            <span className="text-[12px] text-black dark:text-white font-normal">Web</span>
           </button>
-          <button onClick={handleCall} className="flex-1 bg-white dark:bg-[#2c2c2e] rounded-[10px] pt-[14px] pb-[6px] flex flex-col items-center justify-center gap-1.5 active:bg-[#e5e5ea] dark:active:bg-[#3a3a3c] transition-colors">
-            <Phone className="w-[20px] h-[20px] text-black dark:text-white" strokeWidth={1.5} />
-            <span className="text-[11px] text-black dark:text-white font-normal">Llamar</span>
+          <button onClick={handleCall} className="flex-1 bg-white dark:bg-[#2c2c2e] rounded-[10px] pt-[18px] pb-[10px] flex flex-col items-center justify-center gap-1.5 active:bg-[#e5e5ea] dark:active:bg-[#3a3a3c] transition-colors">
+            <Phone className="w-[22px] h-[22px] text-black dark:text-white" strokeWidth={1.5} />
+            <span className="text-[12px] text-black dark:text-white font-normal">Llamar</span>
           </button>
-          <button onClick={handleMap} className="flex-1 bg-white dark:bg-[#2c2c2e] rounded-[10px] pt-[14px] pb-[6px] flex flex-col items-center justify-center gap-1.5 active:bg-[#e5e5ea] dark:active:bg-[#3a3a3c] transition-colors">
-            <MapPin className="w-[20px] h-[20px] text-black dark:text-white" strokeWidth={1.5} />
-            <span className="text-[11px] text-black dark:text-white font-normal">Dirección</span>
+          <button onClick={handleMap} className="flex-1 bg-white dark:bg-[#2c2c2e] rounded-[10px] pt-[18px] pb-[10px] flex flex-col items-center justify-center gap-1.5 active:bg-[#e5e5ea] dark:active:bg-[#3a3a3c] transition-colors">
+            <MapPin className="w-[22px] h-[22px] text-black dark:text-white" strokeWidth={1.5} />
+            <span className="text-[12px] text-black dark:text-white font-normal">Dirección</span>
           </button>
         </div>
 
-        <button onClick={handleArticle} className="w-full bg-white dark:bg-[#2c2c2e] rounded-[10px] pl-4 pr-3 py-2 flex items-center justify-between active:bg-[#e5e5ea] dark:active:bg-[#3a3a3c] transition-colors">
-          <span className="text-black dark:text-white text-[15px] font-normal">Ver el artículo anti piratería</span>
-          <Info className="w-[20px] h-[20px] text-black dark:text-white" strokeWidth={1.5} />
+        <button onClick={handleArticle} className="w-full bg-white dark:bg-[#2c2c2e] rounded-[10px] pl-4 pr-3 py-3 flex items-center justify-between active:bg-[#e5e5ea] dark:active:bg-[#3a3a3c] transition-colors">
+          <span className="text-black dark:text-white text-[16px] font-normal">Ver el artículo anti piratería</span>
+          <Info className="w-[22px] h-[22px] text-black dark:text-white" strokeWidth={1.5} />
         </button>
       </div>
     </div>
