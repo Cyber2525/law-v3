@@ -42,6 +42,13 @@ const App: React.FC = () => {
   const [isStreamingCooldown, setIsStreamingCooldown] = useState(false);
   const [isRisksCooldown, setIsRisksCooldown] = useState(false);
   const [isAnimating, setIsAnimating] = useState(false);
+  const lastModalRef = useRef<'risks' | 'streaming' | null>(null);
+
+  // Track which modal was last opened to maintain correct colors during closing animation
+  useEffect(() => {
+    if (risksModalOpen) lastModalRef.current = 'risks';
+    else if (streamingModalOpen) lastModalRef.current = 'streaming';
+  }, [risksModalOpen, streamingModalOpen]);
 
   // Refs for cooldown timers and transition state to prevent race conditions
   const streamingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -101,7 +108,7 @@ const App: React.FC = () => {
         setIsAnimating(false);
         isTransitioningRef.current = false;
         document.documentElement.style.setProperty('--drawer-transition-duration', '0s');
-      }, 300);
+      }, 500);
       return () => clearTimeout(timer);
     }
   }, [risksModalOpen, streamingModalOpen]);
@@ -223,7 +230,9 @@ const App: React.FC = () => {
     
     // Drawer Backgrounds
     const DRAWER_BG_LIGHT = '#F2F2F7';
-    const DRAWER_BG_DARK = risksModalOpen ? '#1E1E20' : '#1c1c1e';
+    // Use lastModalRef to ensure the correct background color during the closing animation
+    const isRisksActive = risksModalOpen || (isAnimating && lastModalRef.current === 'risks');
+    const DRAWER_BG_DARK = isRisksActive ? '#1E1E20' : '#1c1c1e';
 
     let topColor = isDarkMode ? APP_BG_DARK : APP_BG_LIGHT;
     let bottomColor = isDarkMode ? APP_BG_DARK : APP_BG_LIGHT;
@@ -241,11 +250,15 @@ const App: React.FC = () => {
       }
     }
 
-    // Update meta tags
+    // Update meta tags with optimization to avoid unnecessary updates (helps with Safari lag)
     const updateMeta = (color: string) => {
       const metas = document.querySelectorAll('meta[name="theme-color"]');
+      let changed = false;
       metas.forEach(meta => {
-        meta.setAttribute('content', color);
+        if (meta.getAttribute('content') !== color) {
+          meta.setAttribute('content', color);
+          changed = true;
+        }
       });
       
       if (metas.length === 0) {
@@ -253,11 +266,15 @@ const App: React.FC = () => {
         meta.setAttribute('name', 'theme-color');
         meta.setAttribute('content', color);
         document.head.appendChild(meta);
+        changed = true;
       }
+      return changed;
     };
 
     updateMeta(topColor);
-    document.body.style.backgroundColor = bottomColor;
+    if (document.body.style.backgroundColor !== bottomColor) {
+      document.body.style.backgroundColor = bottomColor;
+    }
 
   }, [isDarkMode, streamingModalOpen, risksModalOpen, isDesktop, isLandscape, isAnimating]);
 
