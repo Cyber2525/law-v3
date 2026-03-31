@@ -6,6 +6,27 @@ import { RisksModal } from './components/RisksModal';
 import { IOSToggle } from './components/IOSToggle';
 import { DebugOSOverride } from './components/DebugOSOverride';
 
+// --- Hooks ---
+function useMediaQuery(query: string) {
+  const [value, setValue] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return window.matchMedia(query).matches;
+    }
+    return false;
+  });
+
+  useEffect(() => {
+    function onChange(event: MediaQueryListEvent) {
+      setValue(event.matches);
+    }
+    const result = matchMedia(query);
+    result.addEventListener("change", onChange);
+    setValue(result.matches);
+    return () => result.removeEventListener("change", onChange);
+  }, [query]);
+  return value;
+}
+
 const App: React.FC = () => {
   // Detect system preference initially
   const [isDarkMode, setIsDarkMode] = useState(() => {
@@ -185,6 +206,60 @@ const App: React.FC = () => {
       }
   }, [risksModalOpen]);
   // -------------------------------------
+
+  // --- Theme Color Management ---
+  const isLandscape = useMediaQuery('(orientation: landscape)');
+  const isDesktop = useMediaQuery('(min-width: 600px) and (min-height: 600px)');
+  
+  useEffect(() => {
+    const anyDrawerOpen = streamingModalOpen || risksModalOpen;
+    // We want to keep the drawer theme color while it's opening OR closing (animating)
+    const activeDrawer = anyDrawerOpen || isAnimating;
+    const isBottomSheet = activeDrawer && !isDesktop;
+    
+    // Default App Backgrounds
+    const APP_BG_LIGHT = '#F2F2F7';
+    const APP_BG_DARK = '#0a0a0a';
+    
+    // Drawer Backgrounds
+    const DRAWER_BG_LIGHT = '#F2F2F7';
+    const DRAWER_BG_DARK = risksModalOpen ? '#1E1E20' : '#1c1c1e';
+
+    let topColor = isDarkMode ? APP_BG_DARK : APP_BG_LIGHT;
+    let bottomColor = isDarkMode ? APP_BG_DARK : APP_BG_LIGHT;
+
+    if (isBottomSheet) {
+      // Bottom color matches drawer background
+      bottomColor = isDarkMode ? DRAWER_BG_DARK : DRAWER_BG_LIGHT;
+      
+      if (!isLandscape) {
+        // Portrait bottom sheet: Top turns black
+        topColor = '#000000';
+      } else {
+        // Horizontal bottom sheet: Top remains app background
+        topColor = isDarkMode ? APP_BG_DARK : APP_BG_LIGHT;
+      }
+    }
+
+    // Update meta tags
+    const updateMeta = (color: string) => {
+      const metas = document.querySelectorAll('meta[name="theme-color"]');
+      metas.forEach(meta => {
+        meta.setAttribute('content', color);
+      });
+      
+      if (metas.length === 0) {
+        const meta = document.createElement('meta');
+        meta.setAttribute('name', 'theme-color');
+        meta.setAttribute('content', color);
+        document.head.appendChild(meta);
+      }
+    };
+
+    updateMeta(topColor);
+    document.body.style.backgroundColor = bottomColor;
+
+  }, [isDarkMode, streamingModalOpen, risksModalOpen, isDesktop, isLandscape, isAnimating]);
 
   useEffect(() => {
     if (isDarkMode) {
