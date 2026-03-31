@@ -238,7 +238,7 @@ const App: React.FC = () => {
         <div 
             style={{ willChange: 'background-color, border-color, color' }}
             className={`
-            flex items-center gap-3 bg-white dark:bg-[rgba(24,24,26,0.70)] backdrop-blur-xl pl-4 pr-1 py-1 rounded-full border border-black/5 dark:border-white/10 transition-all duration-300 z-30
+            flex items-center gap-3 bg-white dark:bg-[rgba(24,24,26,0.70)] pl-4 pr-1 py-1 rounded-full border border-black/5 dark:border-white/10 transition-all duration-300 z-30
             relative -mt-[15px] mb-6
             landscape:absolute landscape:top-[17px] landscape:right-6 landscape:mt-0 landscape:mb-0
             md:absolute md:top-[17px] md:right-6 md:mt-0 md:mb-0
