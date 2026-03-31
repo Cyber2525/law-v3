@@ -109,20 +109,20 @@ export const MinisterioBottomSheet: React.FC<MinisterioBottomSheetProps> = ({ is
           />
         </div>
         <h2 className="text-[30px] font-bold text-black dark:text-white mb-0 tracking-tight">Ministerio de cultura</h2>
-        <p className="text-[#8e8e93] dark:text-gray-400 text-[17px] font-medium">+34 917 017 000</p>
+        <p className="text-[#8e8e93] dark:text-gray-400 text-[17px] font-medium">Gobierno de España</p>
       </div>
 
       <div className="px-4 pb-4 flex flex-col gap-3">
         <div className="flex justify-center gap-3">
-          <button onClick={handleWeb} className="flex-1 bg-white dark:bg-[#2c2c2e] rounded-[12px] pt-[18px] pb-[6px] flex flex-col items-center justify-between min-h-[84px] active:bg-[#e5e5ea] dark:active:bg-[#3a3a3c] transition-colors">
+          <button onClick={handleWeb} className="flex-1 bg-white dark:bg-[#2c2c2e] rounded-[12px] pt-[15px] pb-[6px] flex flex-col items-center justify-between min-h-[78px] active:bg-[#e5e5ea] dark:active:bg-[#3a3a3c] transition-colors">
             <Link className="w-[26px] h-[26px] text-black dark:text-white" strokeWidth={1.5} />
             <span className="text-[17px] text-black dark:text-white font-medium">Web</span>
           </button>
-          <button onClick={handleCall} className="flex-1 bg-white dark:bg-[#2c2c2e] rounded-[12px] pt-[18px] pb-[6px] flex flex-col items-center justify-between min-h-[84px] active:bg-[#e5e5ea] dark:active:bg-[#3a3a3c] transition-colors">
+          <button onClick={handleCall} className="flex-1 bg-white dark:bg-[#2c2c2e] rounded-[12px] pt-[15px] pb-[6px] flex flex-col items-center justify-between min-h-[78px] active:bg-[#e5e5ea] dark:active:bg-[#3a3a3c] transition-colors">
             <Phone className="w-[26px] h-[26px] text-black dark:text-white" strokeWidth={1.5} />
             <span className="text-[17px] text-black dark:text-white font-medium">Llamar</span>
           </button>
-          <button onClick={handleMap} className="flex-1 bg-white dark:bg-[#2c2c2e] rounded-[12px] pt-[18px] pb-[6px] flex flex-col items-center justify-between min-h-[84px] active:bg-[#e5e5ea] dark:active:bg-[#3a3a3c] transition-colors">
+          <button onClick={handleMap} className="flex-1 bg-white dark:bg-[#2c2c2e] rounded-[12px] pt-[15px] pb-[6px] flex flex-col items-center justify-between min-h-[78px] active:bg-[#e5e5ea] dark:active:bg-[#3a3a3c] transition-colors">
             <MapPin className="w-[26px] h-[26px] text-black dark:text-white" strokeWidth={1.5} />
             <span className="text-[17px] text-black dark:text-white font-medium">Dirección</span>
           </button>
