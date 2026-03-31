@@ -158,7 +158,7 @@ export const IOSAlert: React.FC<IOSAlertProps> = ({
         style={{ pointerEvents: 'auto' }}
     >
        <div 
-         className={`absolute inset-0 bg-black/[0.0625] transition-opacity duration-300 ease-in-out ${backdropClass}`}
+         className={`absolute inset-0 bg-black/[0.125] transition-opacity duration-300 ease-in-out ${backdropClass}`}
          onClick={(e) => e.stopPropagation()}
        />
 
