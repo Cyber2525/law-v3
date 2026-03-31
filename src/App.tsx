@@ -41,8 +41,6 @@ const App: React.FC = () => {
   const [hasViewedRisks, setHasViewedRisks] = useState(false);
   const [isStreamingCooldown, setIsStreamingCooldown] = useState(false);
   const [isRisksCooldown, setIsRisksCooldown] = useState(false);
-  const [safariTopColor, setSafariTopColor] = useState<string>('');
-  const [safariBottomColor, setSafariBottomColor] = useState<string>('');
   const [isAnimating, setIsAnimating] = useState(false);
   const lastModalRef = useRef<'risks' | 'streaming' | null>(null);
 
@@ -283,8 +281,6 @@ const App: React.FC = () => {
     if (document.body.style.backgroundColor !== bottomColor) {
       document.body.style.backgroundColor = bottomColor;
     }
-    setSafariTopColor(topColor);
-    setSafariBottomColor(bottomColor);
 
   }, [isDarkMode, streamingModalOpen, risksModalOpen, isDesktop, isLandscape, isAnimating]);
 
@@ -309,19 +305,6 @@ const App: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-[#0a0a0a] relative">
-      {/* Safari Theme Color Hacks */}
-      {safariTopColor && (
-        <div 
-          className="fixed top-0 left-0 right-0 h-[1px] z-[999999] pointer-events-none" 
-          style={{ backgroundColor: safariTopColor }} 
-        />
-      )}
-      {safariBottomColor && (
-        <div 
-          className="fixed bottom-0 left-0 right-0 h-[1px] z-[999999] pointer-events-none" 
-          style={{ backgroundColor: safariBottomColor }} 
-        />
-      )}
       <div vaul-drawer-wrapper="" className={`min-h-screen ${isDarkMode ? 'dark' : ''} relative z-10 overflow-hidden`}>
         <div className={`min-h-screen flex flex-col items-center relative overflow-hidden transition-colors duration-300 ${isDarkMode ? 'text-white selection:bg-red-500/30' : 'text-black selection:bg-blue-500/30'}`}>
           

@@ -15,7 +15,7 @@ export const InfoModal: React.FC<InfoModalProps> = ({ isOpen, onClose, data }) =
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center sm:p-4">
       {/* Backdrop */}
       <div 
-        className="absolute inset-0 bg-black/60 sm:backdrop-blur-none backdrop-blur-sm transition-opacity" 
+        className="absolute inset-0 bg-[image:linear-gradient(rgba(0,0,0,0.6),rgba(0,0,0,0.6))] sm:backdrop-blur-none backdrop-blur-sm transition-opacity" 
         onClick={onClose}
       />
 
