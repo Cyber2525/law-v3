@@ -624,7 +624,7 @@ export const RisksModal: React.FC<RisksModalProps> = ({ isOpen, onClose }) => {
     >
       <Drawer.Portal>
         <Drawer.Overlay 
-          className="fixed inset-0 bg-black/[0.13] z-50 transition-opacity duration-[800ms]"
+          className="fixed top-[1px] bottom-[1px] left-0 right-0 bg-black/[0.13] z-50 transition-opacity duration-[800ms]"
         />
         <Drawer.Content className="bg-[#F2F2F7] dark:bg-[#1E1E20] flex flex-col rounded-t-[13px] fixed bottom-0 left-0 right-0 z-50 outline-none shadow-2xl h-[calc(90.7vh-0.84px)] landscape:rounded-t-[13px] landscape:rounded-b-none landscape:left-[19px] landscape:right-[19px] landscape:bottom-0 landscape:mx-auto landscape:max-w-lg">
             

@@ -41,6 +41,8 @@ const App: React.FC = () => {
   const [hasViewedRisks, setHasViewedRisks] = useState(false);
   const [isStreamingCooldown, setIsStreamingCooldown] = useState(false);
   const [isRisksCooldown, setIsRisksCooldown] = useState(false);
+  const [safariTopColor, setSafariTopColor] = useState<string>('');
+  const [safariBottomColor, setSafariBottomColor] = useState<string>('');
   const [isAnimating, setIsAnimating] = useState(false);
   const lastModalRef = useRef<'risks' | 'streaming' | null>(null);
 
@@ -90,10 +92,12 @@ const App: React.FC = () => {
       }
 
       const timer = setTimeout(() => {
+        setIsAnimating(false); // Reset animating state after opening
         isTransitioningRef.current = false;
       }, 500);
       return () => clearTimeout(timer);
     } else {
+      setIsAnimating(true); // Set animating to true when starting to close
       isTransitioningRef.current = true;
       
       if (!isDesktop) {
@@ -217,6 +221,7 @@ const App: React.FC = () => {
   // --- Theme Color Management ---
   const isLandscape = useMediaQuery('(orientation: landscape)');
   const isDesktop = useMediaQuery('(min-width: 600px) and (min-height: 600px)');
+  const lastTopColorRef = useRef<string | null>(null);
   
   useEffect(() => {
     const anyDrawerOpen = streamingModalOpen || risksModalOpen;
@@ -252,6 +257,9 @@ const App: React.FC = () => {
 
     // Update meta tags with optimization to avoid unnecessary updates (helps with Safari lag)
     const updateMeta = (color: string) => {
+      if (lastTopColorRef.current === color) return false;
+      lastTopColorRef.current = color;
+
       const metas = document.querySelectorAll('meta[name="theme-color"]');
       let changed = false;
       metas.forEach(meta => {
@@ -275,6 +283,8 @@ const App: React.FC = () => {
     if (document.body.style.backgroundColor !== bottomColor) {
       document.body.style.backgroundColor = bottomColor;
     }
+    setSafariTopColor(topColor);
+    setSafariBottomColor(bottomColor);
 
   }, [isDarkMode, streamingModalOpen, risksModalOpen, isDesktop, isLandscape, isAnimating]);
 
@@ -299,6 +309,19 @@ const App: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-[#0a0a0a] relative">
+      {/* Safari Theme Color Hacks */}
+      {safariTopColor && (
+        <div 
+          className="fixed top-0 left-0 right-0 h-[1px] z-[999999] pointer-events-none" 
+          style={{ backgroundColor: safariTopColor }} 
+        />
+      )}
+      {safariBottomColor && (
+        <div 
+          className="fixed bottom-0 left-0 right-0 h-[1px] z-[999999] pointer-events-none" 
+          style={{ backgroundColor: safariBottomColor }} 
+        />
+      )}
       <div vaul-drawer-wrapper="" className={`min-h-screen ${isDarkMode ? 'dark' : ''} relative z-10 overflow-hidden`}>
         <div className={`min-h-screen flex flex-col items-center relative overflow-hidden transition-colors duration-300 ${isDarkMode ? 'text-white selection:bg-red-500/30' : 'text-black selection:bg-blue-500/30'}`}>
           
