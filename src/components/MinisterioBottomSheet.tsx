@@ -108,27 +108,27 @@ export const MinisterioBottomSheet: React.FC<MinisterioBottomSheetProps> = ({ is
             className="w-full h-full object-cover bg-white" 
           />
         </div>
-        <h2 className="text-[34px] font-bold text-black dark:text-white mb-0 tracking-tight">Ministerio de cultura</h2>
-        <p className="text-[#8e8e93] dark:text-gray-400 text-[21px] font-medium">+34 917 017 000</p>
+        <h2 className="text-[30px] font-bold text-black dark:text-white mb-0 tracking-tight">Ministerio de cultura</h2>
+        <p className="text-[#8e8e93] dark:text-gray-400 text-[17px] font-medium">+34 917 017 000</p>
       </div>
 
       <div className="px-4 pb-4 flex flex-col gap-3">
         <div className="flex justify-center gap-3">
-          <button onClick={handleWeb} className="flex-1 bg-white dark:bg-[#2c2c2e] rounded-[12px] pt-[20px] pb-[6px] flex flex-col items-center justify-between min-h-[90px] active:bg-[#e5e5ea] dark:active:bg-[#3a3a3c] transition-colors">
+          <button onClick={handleWeb} className="flex-1 bg-white dark:bg-[#2c2c2e] rounded-[12px] pt-[18px] pb-[6px] flex flex-col items-center justify-between min-h-[84px] active:bg-[#e5e5ea] dark:active:bg-[#3a3a3c] transition-colors">
             <Link className="w-[26px] h-[26px] text-black dark:text-white" strokeWidth={1.5} />
             <span className="text-[17px] text-black dark:text-white font-medium">Web</span>
           </button>
-          <button onClick={handleCall} className="flex-1 bg-white dark:bg-[#2c2c2e] rounded-[12px] pt-[20px] pb-[6px] flex flex-col items-center justify-between min-h-[90px] active:bg-[#e5e5ea] dark:active:bg-[#3a3a3c] transition-colors">
+          <button onClick={handleCall} className="flex-1 bg-white dark:bg-[#2c2c2e] rounded-[12px] pt-[18px] pb-[6px] flex flex-col items-center justify-between min-h-[84px] active:bg-[#e5e5ea] dark:active:bg-[#3a3a3c] transition-colors">
             <Phone className="w-[26px] h-[26px] text-black dark:text-white" strokeWidth={1.5} />
             <span className="text-[17px] text-black dark:text-white font-medium">Llamar</span>
           </button>
-          <button onClick={handleMap} className="flex-1 bg-white dark:bg-[#2c2c2e] rounded-[12px] pt-[20px] pb-[6px] flex flex-col items-center justify-between min-h-[90px] active:bg-[#e5e5ea] dark:active:bg-[#3a3a3c] transition-colors">
+          <button onClick={handleMap} className="flex-1 bg-white dark:bg-[#2c2c2e] rounded-[12px] pt-[18px] pb-[6px] flex flex-col items-center justify-between min-h-[84px] active:bg-[#e5e5ea] dark:active:bg-[#3a3a3c] transition-colors">
             <MapPin className="w-[26px] h-[26px] text-black dark:text-white" strokeWidth={1.5} />
             <span className="text-[17px] text-black dark:text-white font-medium">Dirección</span>
           </button>
         </div>
 
-        <button onClick={handleArticle} className="w-full bg-white dark:bg-[#2c2c2e] rounded-[12px] pl-4 pr-3 py-[14px] flex items-center justify-between active:bg-[#e5e5ea] dark:active:bg-[#3a3a3c] transition-colors">
+        <button onClick={handleArticle} className="w-full bg-white dark:bg-[#2c2c2e] rounded-[12px] pl-4 pr-3 py-[12px] flex items-center justify-between active:bg-[#e5e5ea] dark:active:bg-[#3a3a3c] transition-colors">
           <span className="text-black dark:text-white text-[18px] font-medium">Ver el artículo anti piratería</span>
           <Info className="w-[26px] h-[26px] text-black dark:text-white" strokeWidth={1.5} />
         </button>
