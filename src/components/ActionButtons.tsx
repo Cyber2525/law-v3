@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { motion } from 'motion/react';
 import { ArrowLeft, PlayCircle, ExternalLink } from 'lucide-react';
-import { IOSAlert } from './IOSAlert';
+import { MinisterioBottomSheet } from './MinisterioBottomSheet';
 
 interface ActionButtonsProps {
   onOpenStreaming: () => void;
@@ -19,7 +20,7 @@ export const ActionButtons: React.FC<ActionButtonsProps> = ({
   isStreamingCooldown = false,
   isRisksCooldown = false
 }) => {
-  const [isAlertOpen, setIsAlertOpen] = useState(false);
+  const [isBottomSheetOpen, setIsBottomSheetOpen] = useState(false);
   const externalLink = "https://www.cultura.gob.es/cultura/propiedadintelectual/lucha-contra-la-pirateria.html";
   
   // Long Press Refs
@@ -30,7 +31,7 @@ export const ActionButtons: React.FC<ActionButtonsProps> = ({
   useEffect(() => {
     const handlePopState = (e: PopStateEvent) => {
         if (!e.state?.externalAlert) {
-            setIsAlertOpen(false);
+            setIsBottomSheetOpen(false);
         }
     };
     window.addEventListener('popstate', handlePopState);
@@ -39,14 +40,14 @@ export const ActionButtons: React.FC<ActionButtonsProps> = ({
 
   const openAlert = () => {
       window.history.pushState({ ...window.history.state, externalAlert: true }, '');
-      setIsAlertOpen(true);
+      setIsBottomSheetOpen(true);
   };
 
   const closeAlert = () => {
       if (window.history.state?.externalAlert) {
           window.history.back();
       } else {
-          setIsAlertOpen(false);
+          setIsBottomSheetOpen(false);
       }
   };
   // ------------------------------------
@@ -73,44 +74,7 @@ export const ActionButtons: React.FC<ActionButtonsProps> = ({
         isLongPress.current = false;
         return;
     }
-    const debugOverride = (window as any).__DEBUG_OS_OVERRIDE__;
-    if (debugOverride && debugOverride !== 'default') {
-        if (debugOverride === 'windows') {
-            window.open(externalLink, '_blank', 'noopener,noreferrer');
-            return;
-        }
-    }
-    const isSmallScreen = window.innerWidth < 768;
-    let isIOS = false;
-    let isAndroid = false;
-    let isMacOS = false;
-    let isChromeOS = false;
-    if (debugOverride && debugOverride !== 'default') {
-        if (debugOverride === 'ios') isIOS = true;
-        if (debugOverride === 'android') isAndroid = true;
-        if (debugOverride === 'macos') isMacOS = true;
-        if (debugOverride === 'chromeos') isChromeOS = true;
-    } else {
-        if (typeof navigator !== 'undefined') {
-            const userAgent = navigator.userAgent || navigator.vendor || (window as any).opera;
-            isAndroid = /android/i.test(userAgent);
-            isIOS = /iPad|iPhone|iPod/.test(userAgent) && !(window as any).MSStream;
-            if (!isIOS && !isAndroid) {
-                isMacOS = navigator.platform.toUpperCase().indexOf('MAC') >= 0;
-                isChromeOS = /\bCrOS\b/.test(userAgent);
-            }
-        }
-    }
-    if ((isSmallScreen || isIOS || isAndroid) && !isMacOS && !isChromeOS) {
-      openAlert();
-    } else {
-      window.open(externalLink, '_blank', 'noopener,noreferrer');
-    }
-  };
-
-  const confirmExternalLink = () => {
-    window.open(externalLink, '_blank', 'noopener,noreferrer');
-    closeAlert();
+    openAlert();
   };
 
   // El botón azul (alternativas legales) es gris SOLO si el modal de streaming está abierto O en cooldown de streaming
@@ -122,30 +86,32 @@ export const ActionButtons: React.FC<ActionButtonsProps> = ({
     <>
       <div className="w-full max-w-md px-6 pb-10 flex flex-col gap-4">
         <div className="flex flex-col gap-4 landscape:flex-row w-full">
-          <button 
+          <motion.button 
             onClick={() => window.location.href = 'https://www.google.com'}
+            whileTap={{ opacity: 0.5 }}
             style={{ willChange: 'background-color, border-color, color' }}
-            className="w-full h-14 min-h-[56px] landscape:flex-none landscape:w-[38%] shrink-0 bg-white/60 dark:bg-white/10 hover:bg-white/80 dark:hover:bg-white/15 border-2 border-black/5 dark:border-white/10 active:scale-[0.94] transition-all duration-300 rounded-2xl font-medium text-lg flex items-center justify-center text-gray-900 dark:text-white cursor-pointer"
+            className="w-full h-14 min-h-[56px] landscape:flex-none landscape:w-[38%] shrink-0 bg-white/60 dark:bg-white/10 hover:bg-white/80 dark:hover:bg-white/15 border-2 border-black/5 dark:border-white/10 transition-all duration-300 rounded-2xl font-medium text-lg flex items-center justify-center text-gray-900 dark:text-white cursor-pointer"
           >
             <ArrowLeft className="w-5 h-5 mr-2 text-black dark:text-white transition-colors duration-300" />
             Volver atrás
-          </button>
+          </motion.button>
 
-          <button 
+          <motion.button 
             onClick={onOpenStreaming}
             disabled={isStreamingInactive}
+            whileTap={!isStreamingInactive ? { opacity: 0.5 } : {}}
             className={`
               w-full h-14 min-h-[56px] landscape:flex-1 shrink-0 
               rounded-2xl font-semibold text-lg flex items-center justify-center shadow-lg transition-all duration-300
               ${isStreamingInactive 
                 ? 'bg-gray-400 dark:bg-gray-700 shadow-none cursor-not-allowed text-gray-200 dark:text-gray-500' 
-                : 'bg-blue-600 dark:bg-blue-500 hover:bg-blue-500 dark:hover:bg-blue-400 active:scale-[0.94] shadow-blue-500/20 text-white cursor-pointer'
+                : 'bg-blue-600 dark:bg-blue-500 hover:bg-blue-500 dark:hover:bg-blue-400 shadow-blue-500/20 text-white cursor-pointer'
               }
             `}
           >
             <PlayCircle className={`w-5 h-5 mr-2 transition-colors duration-300 ${isStreamingInactive ? 'text-gray-200 dark:text-gray-500' : 'text-white'}`} />
             alternativas legales
-          </button>
+          </motion.button>
         </div>
         
         <div className="pt-4 flex justify-center">
@@ -157,10 +123,10 @@ export const ActionButtons: React.FC<ActionButtonsProps> = ({
             onTouchStart={handleMouseDown}
             onTouchEnd={handleMouseUp}
             disabled={isLinkInactive}
-            className={`text-base flex items-center transition-colors duration-300 outline-none select-none ${
+            className={`text-base flex items-center transition-all duration-200 outline-none select-none ${
                 isLinkInactive 
                 ? 'text-gray-400 dark:text-gray-700 cursor-not-allowed' 
-                : 'text-gray-400 dark:text-gray-600 hover:text-gray-600 dark:hover:text-gray-300 cursor-pointer'
+                : 'text-gray-400 dark:text-gray-600 hover:text-gray-600 dark:hover:text-gray-300 cursor-pointer opacity-100 active:opacity-50'
             }`}
           >
               🇪🇸 Ministerio de Cultura y Deporte <ExternalLink className="w-5 h-5 ml-1" />
@@ -168,12 +134,9 @@ export const ActionButtons: React.FC<ActionButtonsProps> = ({
         </div>
       </div>
 
-      <IOSAlert 
-        isOpen={isAlertOpen}
+      <MinisterioBottomSheet 
+        isOpen={isBottomSheetOpen}
         onClose={closeAlert}
-        onAction={confirmExternalLink}
-        title='¿Abrir "Ministerio de Cultura"?'
-        message='Serás redirigido a "cultura.gob.es"'
       />
     </>
   );

@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { X, Scale, Eye, Gavel, Bug, Lock, Cpu, Info } from 'lucide-react';
+import { motion } from 'motion/react';
 import { Drawer } from 'vaul';
 
 // --- Types & Data ---
@@ -465,17 +466,18 @@ export const RisksModal: React.FC<RisksModalProps> = ({ isOpen, onClose }) => {
                 </h2>
                 
                 {/* Botón X con feedback mejorado */}
-                <button 
+                <motion.button 
                     onPointerDown={(e) => e.stopPropagation()}
                     onPointerUp={(e) => {
                         e.stopPropagation();
                         onClose();
                     }}
-                    className="absolute right-4 top-0 w-10 h-10 bg-[#767680]/15 dark:bg-black/20 backdrop-blur-xl rounded-full flex items-center justify-center text-gray-500 dark:text-gray-400 hover:bg-gray-300/50 dark:hover:bg-white/10 active:opacity-60 active:scale-90 transition-all duration-300 outline-none touch-none pointer-events-auto cursor-pointer z-50"
+                    whileTap={{ opacity: 0.6, scale: 0.9 }}
+                    className="absolute right-4 top-0 w-10 h-10 bg-[#767680]/15 dark:bg-black/20 backdrop-blur-xl rounded-full flex items-center justify-center text-gray-500 dark:text-gray-400 hover:bg-gray-300/50 dark:hover:bg-white/10 transition-all duration-300 outline-none touch-none pointer-events-auto cursor-pointer z-50"
                     aria-label="Cerrar"
                 >
                     <X className="w-6 h-6" strokeWidth={2.5} />
-                </button>
+                </motion.button>
             </div>
 
             {/* Segmented Control sincronizado con el grid de contenido (px-4 = 16px) */}

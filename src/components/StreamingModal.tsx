@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { X, ChevronRight, ChevronLeft, ExternalLink, ShoppingBag } from 'lucide-react';
+import { motion } from 'motion/react';
 import { Drawer } from 'vaul';
 import { IOSAlert, AlertAction } from './IOSAlert';
 import { CATEGORIES, Service, CategoryData } from '../data/streamingServices';
@@ -47,8 +48,9 @@ const IOSListItem: React.FC<IOSListItemProps> = ({ icon, label, onClick, onPoint
 
     return (
         <div className="relative">
-            <button 
+            <motion.button 
                 onClick={onClick}
+                whileTap={{ opacity: 0.5 }}
                 onPointerDown={(e) => {
                     e.currentTarget.setPointerCapture(e.pointerId);
                     setIsPressed(true);
@@ -84,7 +86,7 @@ const IOSListItem: React.FC<IOSListItemProps> = ({ icon, label, onClick, onPoint
                         external ? <ExternalLink className={`w-4 h-4 ${textColor}`} /> : <ChevronRight className="w-5 h-5 text-gray-300 dark:text-gray-600" strokeWidth={2} />
                     )}
                 </div>
-            </button>
+            </motion.button>
         </div>
     );
 };
@@ -708,7 +710,7 @@ const IOSNavigationStack: React.FC<NavigationProps> = ({
                 }}
             >
                 {/* Back Button Area */}
-                <button 
+                <motion.button 
                     onPointerDown={(e) => e.stopPropagation()}
                     onPointerUp={(e) => {
                         if (activeCategory) {
@@ -716,14 +718,15 @@ const IOSNavigationStack: React.FC<NavigationProps> = ({
                             onBack();
                         }
                     }}
+                    whileTap={{ opacity: 0.5 }}
                     disabled={!activeCategory}
-                    className={`absolute top-0 left-0 h-full pl-4 pr-12 flex items-center text-[#007AFF] transition-all duration-300 active:opacity-50 z-50 touch-none pointer-events-auto cursor-pointer ${
+                    className={`absolute top-0 left-0 h-full pl-4 pr-12 flex items-center text-[#007AFF] transition-all duration-300 z-50 touch-none pointer-events-auto cursor-pointer ${
                         activeCategory ? 'opacity-100' : 'opacity-0 pointer-events-none'
                     }`}
                 >
                     <ChevronLeft className="w-8 h-8 -ml-1" strokeWidth={2.5} />
                     <span className="text-[20px] leading-none pb-0.5 font-normal">Atrás</span>
-                </button>
+                </motion.button>
 
                 {/* Title Area */}
                 <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
@@ -749,16 +752,17 @@ const IOSNavigationStack: React.FC<NavigationProps> = ({
 
                 {/* Close Button Area */}
                 <div className="absolute top-0 right-0 h-full flex items-center pr-[15.5px] z-50">
-                    <button 
+                    <motion.button 
                         onPointerDown={(e) => e.stopPropagation()}
                         onPointerUp={(e) => {
                             e.stopPropagation();
                             onClose();
                         }}
-                        className="bg-[#767680]/15 dark:bg-black/20 backdrop-blur-xl w-10 h-10 rounded-full flex items-center justify-center text-gray-500 dark:text-gray-400 hover:bg-gray-300/50 dark:hover:bg-white/10 active:opacity-60 active:scale-90 transition-all duration-300 outline-none touch-none pointer-events-auto cursor-pointer"
+                        whileTap={{ opacity: 0.6, scale: 0.9 }}
+                        className="bg-[#767680]/15 dark:bg-black/20 backdrop-blur-xl w-10 h-10 rounded-full flex items-center justify-center text-gray-500 dark:text-gray-400 hover:bg-gray-300/50 dark:hover:bg-white/10 transition-all duration-300 outline-none touch-none pointer-events-auto cursor-pointer"
                     >
                         <X className="w-6 h-6" strokeWidth={2.5} />
-                    </button>
+                    </motion.button>
                 </div>
             </div>
 
