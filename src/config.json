@@ -9,12 +9,12 @@
   
 
 
-  "Aqui debes poner": "La informacion de contacto de la empresa o institución. Importante, hay que poner la foto de la empresa dentro de SRC para que funcione",
+  "Aqui debes poner": "La informacion de contacto de la empresa o institución. Importante, hay que poner la foto de la empresa dentro de PUBLIC para que funcione",
 
   "contactCard": {
     "name": "Ministerio de cultura",
     "subName": "Gobierno de España",
-    "photo": "/src/profile.png",
+    "photo": "/profile.png",
     "webUrl": "https://www.cultura.gob.es/",
     "phoneNumber": "917017000",
     "addressUrlApple": "https://maps.apple/p/gVv1Mf3fF0rhE4",
