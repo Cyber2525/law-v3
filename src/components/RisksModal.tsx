@@ -288,9 +288,18 @@ export const RisksModal: React.FC<RisksModalProps> = ({ isOpen, onClose }) => {
     return () => observer.disconnect();
   }, []);
 
-  // Reset scroll progress when segment or open state changes
+  // Sync scroll progress with active segment or open state changes
   useEffect(() => {
-    setScrollProgress(0);
+    if (isOpen) {
+        const currentRef = activeSegment === 'legal' ? legalRef.current : securityRef.current;
+        if (currentRef) {
+            setScrollProgress(Math.min(currentRef.scrollTop / 15, 1));
+        } else {
+            setScrollProgress(0);
+        }
+    } else {
+        setScrollProgress(0);
+    }
   }, [activeSegment, isOpen]);
 
   useEffect(() => {
@@ -429,9 +438,21 @@ export const RisksModal: React.FC<RisksModalProps> = ({ isOpen, onClose }) => {
 
           sliderRef.current.style.transform = `translateX(${move}px)`;
 
+          // Interpolation for RisksModal scrollProgress with fast overscroll overlap logic
+          const ratio = activeSegment === 'legal' 
+              ? Math.max(0, Math.min(1, -move / containerWidth))
+              : Math.max(0, Math.min(1, (move + containerWidth) / containerWidth));
+          const scroll1 = legalRef.current ? Math.min(legalRef.current.scrollTop / 15, 1) : 0;
+          const scroll2 = securityRef.current ? Math.min(securityRef.current.scrollTop / 15, 1) : 0;
+          const fromScroll = activeSegment === 'legal' ? scroll1 : scroll2;
+          const toScroll = activeSegment === 'legal' ? scroll2 : scroll1;
+          
+          const wCurrent = Math.min(1, (1 - ratio) / 0.075);
+          const wTarget = Math.min(1, ratio / 0.075);
+          const interpolatedScroll = Math.max(fromScroll * wCurrent, toScroll * wTarget);
+          setScrollProgress(interpolatedScroll);
+
           if (desktopModalRef.current && isDesktop) {
-              const diffFromBase = move - baseOffset;
-              const ratio = Math.max(0, Math.min(1, Math.abs(diffFromBase) / containerWidth));
               // ratio = 0 when at activeSegment, 1 at the opposite segment
               const targetSegment = activeSegmentRef.current === 'legal' ? 'security' : 'legal';
               const fromHeight = heightsRef.current[activeSegmentRef.current];
@@ -480,6 +501,12 @@ export const RisksModal: React.FC<RisksModalProps> = ({ isOpen, onClose }) => {
           } else {
               startLockout();
               sliderRef.current.style.transform = targetSegment === 'legal' ? 'translateX(0%)' : 'translateX(-50%)';
+              
+              // Restore scroll progress for current active segment upon snapping back
+              const currentRef = activeSegment === 'legal' ? legalRef.current : securityRef.current;
+              if (currentRef) {
+                  setScrollProgress(Math.min(currentRef.scrollTop / 15, 1));
+              }
           }
       }
       isSwipingRef.current = null;

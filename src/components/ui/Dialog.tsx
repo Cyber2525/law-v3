@@ -194,19 +194,20 @@ export const Dialog: React.FC<DialogProps> = ({
                 const isHighlighted = highlightedIndex === idx;
                 
                 let borderClass = '';
-                const borderColor = 'border-black/10 dark:border-white/10';
+                const topBorderColor = 'border-t-black/10 dark:border-t-white/10';
+                const rightBorderColor = 'border-r-black/10 dark:border-r-white/10';
                 
                 if (isVertical) {
                     const isPrevHighlighted = idx > 0 && highlightedIndex === idx - 1;
                     const hideTop = isHighlighted || isPrevHighlighted;
-                    borderClass = `border-t ${hideTop ? 'border-transparent' : borderColor}`;
+                    borderClass = `border-t ${hideTop ? 'border-t-transparent' : topBorderColor}`;
                 } else {
                     const hideTop = isHighlighted;
-                    const topBorder = `border-t ${hideTop ? 'border-transparent' : borderColor}`;
+                    const topBorder = `border-t ${hideTop ? 'border-t-transparent' : topBorderColor}`;
                     
                     if (idx === 0) {
                         const hideRight = highlightedIndex !== null;
-                        const rightBorder = `border-r ${hideRight ? 'border-transparent' : borderColor}`;
+                        const rightBorder = `border-r ${hideRight ? 'border-r-transparent' : rightBorderColor}`;
                         borderClass = `${topBorder} ${rightBorder}`;
                     } else {
                         borderClass = topBorder;
@@ -214,15 +215,13 @@ export const Dialog: React.FC<DialogProps> = ({
                 }
 
                 const heightClass = isVertical ? 'h-[44px]' : 'h-full';
-                const durationClass = isSliding ? 'duration-0' : 'duration-200';
 
                 return (
                     <button
                         key={idx}
                         data-action-index={idx}
                         className={`relative ${heightClass} ${textColor} ${fontWeight} text-[17px]
-                                   ${isHighlighted ? 'bg-gray-400/30 dark:bg-white/10' : 'bg-transparent'}
-                                   ${durationClass} transition-colors
+                                   ${isHighlighted ? 'bg-gray-400/15 dark:bg-white/10' : 'bg-transparent'}
                                    outline-none select-none cursor-pointer ${borderClass}`}
                     >
                         {action.label}

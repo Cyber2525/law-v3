@@ -2,6 +2,7 @@ import React from 'react';
 import { motion } from 'motion/react';
 import { ShieldAlert } from 'lucide-react';
 import { TbPointer } from "react-icons/tb";
+import { usePressTracking } from '../hooks/usePressTracking';
 import config from '../config.json';
 
 interface MainContentProps {
@@ -25,6 +26,11 @@ export const MainContent: React.FC<MainContentProps> = ({
 
   const isInactive = isRisksOpen || isRisksCooldown;
 
+  const shieldTracking = usePressTracking({
+    disabled: isInactive,
+    onTrigger: handleShieldClick,
+  });
+
   return (
     <div className="flex flex-col items-center justify-center pt-12 pb-8 px-6 text-center space-y-6">
       <div className="relative group">
@@ -32,12 +38,13 @@ export const MainContent: React.FC<MainContentProps> = ({
         <div className={`absolute inset-0 bg-red-500/20 blur-3xl rounded-full animate-breathe pointer-events-none transition-opacity duration-300 ${isInactive ? 'opacity-0' : 'opacity-100'}`}></div>
         
         <motion.button 
-          onClick={handleShieldClick}
+          ref={shieldTracking.buttonRef}
+          {...shieldTracking.pointerEvents}
           disabled={isInactive}
-          whileTap={!isInactive ? { scale: 0.92 } : {}}
+          animate={shieldTracking.isPressed && !isInactive ? { scale: 0.92 } : { scale: 1 }}
           transition={{ type: 'spring', stiffness: 600, damping: 30 }}
           className={`
-            relative w-24 h-24 rounded-[2rem] flex items-center justify-center transition-[background-color,border-color,box-shadow] duration-300 z-10 outline-none focus-visible:ring-4 focus-visible:ring-red-500/50
+            relative w-24 h-24 rounded-[2rem] flex items-center justify-center transition-[background-color,border-color,box-shadow] duration-300 z-10 outline-none focus-visible:ring-4 focus-visible:ring-red-500/50 select-none touch-none
             ${isInactive 
               ? 'bg-gray-400 dark:bg-gray-700 border-gray-400 dark:border-gray-700 shadow-none cursor-not-allowed scale-100' 
               : 'bg-red-500 border border-white/20 dark:border-white/10 shadow-2xl shadow-red-500/30 cursor-pointer'
@@ -45,7 +52,7 @@ export const MainContent: React.FC<MainContentProps> = ({
           `}
           aria-label="Ver detalles de riesgos"
         >
-          <ShieldAlert className={`w-12 h-12 transition-colors duration-300 ${isInactive ? 'text-gray-200 dark:text-gray-500' : 'text-white drop-shadow-md'}`} strokeWidth={1.5} />
+          <ShieldAlert className={`w-12 h-12 transition-colors duration-300 pointer-events-none ${isInactive ? 'text-gray-200 dark:text-gray-500' : 'text-white drop-shadow-md'}`} strokeWidth={1.5} />
           
           {/* Hint indicator for interactivity */}
           <div className={`absolute inset-0 rounded-[2rem] transition-colors duration-300 ${isInactive ? 'bg-transparent' : 'bg-white/0 group-hover:bg-white/10'}`} />

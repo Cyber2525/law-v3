@@ -16,9 +16,9 @@ body {
 [vaul-drawer-wrapper] {
   /* Default state when not animating/scaled */
   border-radius: 0px;
-  transition-property: transform, border-radius, width, margin;
-  transition-duration: var(--drawer-transition-duration);
-  transition-timing-function: cubic-bezier(0.32, 0.72, 0, 1);
+  transition-property: transform, border-radius, width, margin !important;
+  transition-duration: var(--drawer-transition-duration) !important;
+  transition-timing-function: cubic-bezier(0.32, 0.72, 0, 1) !important;
 }
 
 /* Kill transitions during active dragging for immediate sync */
@@ -39,7 +39,7 @@ body {
 
 /* Custom Vaul background scaling to match iOS perfectly, synchronized dynamically */
 @media (orientation: portrait) {
-  [vaul-drawer-wrapper][style*="transform"] {
+  [vaul-drawer-wrapper] {
     /* iPhone-like starting rounded corners (0px), transitioning to 13px when scaled */
     /* Only top corners are rounded, bottom corners stay at 0 */
     border-radius: calc(var(--drawer-progress) * 13px) calc(var(--drawer-progress) * 13px) 0 0 !important;
@@ -53,8 +53,6 @@ body {
 @media (orientation: landscape) {
   [vaul-drawer-wrapper] {
     border-radius: 0 !important;
-  }
-  [vaul-drawer-wrapper][style*="transform"] {
     transform: none !important;
     width: 100% !important;
     margin: 0 !important;

@@ -52,7 +52,6 @@ const ItemList: React.FC<ItemListProps> = ({ icon, label, onClick, onPointerDown
         <div className="relative">
             <motion.button 
                 onClick={onClick}
-                whileTap={{ opacity: 0.5 }}
                 onPointerDown={(e) => {
                     e.currentTarget.setPointerCapture(e.pointerId);
                     setIsPressed(true);
@@ -299,6 +298,88 @@ const IOSNavigationStack: React.FC<NavigationProps> = ({
 
     const [pressedId, setPressedId] = useState<string | null>(null);
 
+    // Custom Back Button states and handlers
+    const [isBackButtonActive, setIsBackButtonActive] = useState(false);
+    const [isBackReentry, setIsBackReentry] = useState(false);
+    const backButtonRef = useRef<HTMLButtonElement>(null);
+    const isPointerDownOnBack = useRef(false);
+
+    const handleBackPointerDown = (e: React.PointerEvent<HTMLButtonElement>) => {
+        if (!activeCategory) return;
+        e.stopPropagation();
+        
+        // Only respond to main/left button interactions
+        if (e.button !== 0) return;
+
+        isPointerDownOnBack.current = true;
+        setIsBackReentry(false);
+        setIsBackButtonActive(true);
+
+        try {
+            e.currentTarget.setPointerCapture(e.pointerId);
+        } catch (err) {
+            // Fail-safe
+        }
+    };
+
+    const handleBackPointerMove = (e: React.PointerEvent<HTMLButtonElement>) => {
+        if (!isPointerDownOnBack.current || !activeCategory) return;
+        e.stopPropagation();
+
+        if (!backButtonRef.current) return;
+        const rect = backButtonRef.current.getBoundingClientRect();
+
+        const isInside = (
+            e.clientX >= rect.left &&
+            e.clientX <= rect.right &&
+            e.clientY >= rect.top &&
+            e.clientY <= rect.bottom
+        );
+
+        if (isInside) {
+            if (!isBackButtonActive) {
+                setIsBackReentry(true);
+                setIsBackButtonActive(true);
+            }
+        } else {
+            if (isBackButtonActive) {
+                setIsBackButtonActive(false);
+            }
+        }
+    };
+
+    const handleBackPointerUp = (e: React.PointerEvent<HTMLButtonElement>) => {
+        e.stopPropagation();
+        try {
+            e.currentTarget.releasePointerCapture(e.pointerId);
+        } catch (err) {
+            // Fail-safe
+        }
+
+        if (!isPointerDownOnBack.current) return;
+        isPointerDownOnBack.current = false;
+
+        const wasActive = isBackButtonActive;
+        setIsBackButtonActive(false);
+        setIsBackReentry(false);
+
+        if (wasActive && activeCategory) {
+            onBack();
+        }
+    };
+
+    const handleBackPointerCancel = (e: React.PointerEvent<HTMLButtonElement>) => {
+        e.stopPropagation();
+        try {
+            e.currentTarget.releasePointerCapture(e.pointerId);
+        } catch (err) {
+            // Fail-safe
+        }
+        isPointerDownOnBack.current = false;
+        setIsBackButtonActive(false);
+        setIsBackReentry(false);
+    };
+
     useEffect(() => {
         if (prevCategoryRef.current !== activeCategory) {
             let srcScroll = 0;
@@ -520,6 +601,7 @@ const IOSNavigationStack: React.FC<NavigationProps> = ({
 
     const onPointerDown = (e: React.PointerEvent) => {
         if (!activeCategory) return;
+        setNavTransitionType('none');
         touchStartX.current = e.clientX;
         touchStartY.current = e.clientY;
         previousMoveX.current = e.clientX;
@@ -586,9 +668,21 @@ const IOSNavigationStack: React.FC<NavigationProps> = ({
 
              sliderRef.current.style.transform = `translateX(${move}px)`;
 
+             // Calculate ratio (from 0 = Services to 1 = Categories) and clamp overscroll
+             const ratio = Math.max(0, Math.min(1, (move - baseOffset) / containerWidth));
+             
+             // Get vertical scroll progress of both pages
+             const scroll1 = categoriesRef.current ? Math.min(categoriesRef.current.scrollTop / 15, 1) : 0;
+             const scroll2 = servicesRef.current ? Math.min(servicesRef.current.scrollTop / 15, 1) : 0;
+             
+             // Fast vertical scroll-based overlap logic for horizontal drag:
+             // W(v) = min(1, v / 0.075) allows fast transition at the beginning of swiping to an overscrolled page (halved distance)
+             const wCurrent = Math.min(1, (1 - ratio) / 0.075);
+             const wTarget = Math.min(1, ratio / 0.075);
+             const interpolatedScroll = Math.max(scroll2 * wCurrent, scroll1 * wTarget);
+             setScrollProgress(interpolatedScroll);
+
              if (contentWrapperRef.current && (isDesktop || isLandscape)) {
-                 const diffFromBase = move - baseOffset; // goes from 0 up to containerWidth
-                 const ratio = Math.max(0, Math.min(1, Math.abs(diffFromBase) / containerWidth));
                  // ratio = 0 when move == baseOffset (services), ratio = 1 when move == 0 (categories)
                  const interpolatedHeight = heightsRef.current.services + (heightsRef.current.categories - heightsRef.current.services) * ratio;
                  contentWrapperRef.current.style.height = `${interpolatedHeight}px`;
@@ -623,6 +717,31 @@ const IOSNavigationStack: React.FC<NavigationProps> = ({
                 onBack();
             } else {
                 sliderRef.current.style.transform = 'translateX(-50%)';
+                
+                // When snapping back to Services, animate the scrollProgress back to services scroll progress
+                const scroll1 = categoriesRef.current ? Math.min(categoriesRef.current.scrollTop / 15, 1) : 0;
+                const scroll2 = servicesRef.current ? Math.min(servicesRef.current.scrollTop / 15, 1) : 0;
+                
+                if (scroll1 === 0 && scroll2 > 0) {
+                    setNavTransitionType('fade-in');
+                    setTimeout(() => {
+                        setScrollProgress(scroll2);
+                    }, 50);
+                    setTimeout(() => {
+                        setNavTransitionType('none');
+                    }, 1000);
+                } else if (scroll1 > 0 && scroll2 === 0) {
+                    setNavTransitionType('fade-out');
+                    setTimeout(() => {
+                        setScrollProgress(scroll2);
+                    }, 50);
+                    setTimeout(() => {
+                        setNavTransitionType('none');
+                    }, 1000);
+                } else {
+                    setScrollProgress(scroll2);
+                    setNavTransitionType('none');
+                }
             }
         }
         isHorizontalSwipeRef.current = null;
@@ -721,17 +840,18 @@ const IOSNavigationStack: React.FC<NavigationProps> = ({
             >
                 {/* Back Button Area */}
                 <button 
-                    onPointerDown={(e) => e.stopPropagation()}
-                    onPointerUp={(e) => {
-                        if (activeCategory) {
-                            e.stopPropagation();
-                            onBack();
-                        }
-                    }}
+                    ref={backButtonRef}
+                    onPointerDown={handleBackPointerDown}
+                    onPointerMove={handleBackPointerMove}
+                    onPointerUp={handleBackPointerUp}
+                    onPointerCancel={handleBackPointerCancel}
                     disabled={!activeCategory}
-                    className={`absolute top-0 left-0 h-full pl-4 pr-12 flex items-center text-[#007AFF] transition-all duration-300 z-50 touch-none pointer-events-auto cursor-pointer active:opacity-50 ${
-                        activeCategory ? 'opacity-100' : 'opacity-0 pointer-events-none'
+                    className={`absolute top-0 left-0 h-full pl-4 pr-12 flex items-center text-[#007AFF] transition-opacity z-50 touch-none pointer-events-auto cursor-pointer ${
+                        isBackButtonActive ? 'opacity-50' : (activeCategory ? 'opacity-100' : 'opacity-0 pointer-events-none')
                     }`}
+                    style={{
+                        transitionDuration: (isBackButtonActive && !isBackReentry) ? '0ms' : '300ms'
+                    }}
                 >
                     <ChevronLeft className="w-8 h-8 -ml-1" strokeWidth={2.5} />
                     <span className="text-[20px] leading-none pb-0.5 font-normal">Atrás</span>

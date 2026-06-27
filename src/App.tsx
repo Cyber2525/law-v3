@@ -73,17 +73,8 @@ const App: React.FC = () => {
       isTransitioningRef.current = true;
       
       if (!isDesktop) {
-        // Prepare starting state
-        document.documentElement.style.setProperty('--drawer-transition-duration', '0s');
-        document.documentElement.style.setProperty('--drawer-progress', '0');
-        
-        // Trigger animation
-        requestAnimationFrame(() => {
-          requestAnimationFrame(() => {
-            document.documentElement.style.setProperty('--drawer-transition-duration', '0.5s');
-            document.documentElement.style.setProperty('--drawer-progress', '1');
-          });
-        });
+        document.documentElement.style.setProperty('--drawer-transition-duration', '0.5s');
+        document.documentElement.style.setProperty('--drawer-progress', '1');
       } else {
         document.documentElement.style.setProperty('--drawer-transition-duration', '0s');
         document.documentElement.style.setProperty('--drawer-progress', '0');
