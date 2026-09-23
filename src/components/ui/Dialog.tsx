@@ -39,6 +39,8 @@ export const Dialog: React.FC<DialogProps> = ({
   const [highlightedIndex, setHighlightedIndex] = useState<number | null>(null);
   const [isSliding, setIsSliding] = useState(false);
   const actionsContainerRef = useRef<HTMLDivElement>(null);
+  const hasExitedActionRef = useRef(false);
+  const lastActionDistRef = useRef(0);
 
   // Snapshot state to persist content during exit animation.
   const [snapshot, setSnapshot] = useState({ 
@@ -89,6 +91,8 @@ export const Dialog: React.FC<DialogProps> = ({
   const handlePointerDown = (e: React.PointerEvent) => {
       setIsSliding(false);
       (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+      hasExitedActionRef.current = false;
+      lastActionDistRef.current = 0;
       const target = e.target as HTMLElement;
       const button = target.closest('button[data-action-index]');
       if (button) {
@@ -102,17 +106,57 @@ export const Dialog: React.FC<DialogProps> = ({
       
       if (!isSliding) setIsSliding(true);
 
-      const element = document.elementFromPoint(e.clientX, e.clientY);
-      const button = element?.closest('button[data-action-index]');
+      const extraMargin = 50;
+      let matchedIdx: number | null = null;
+      let closestDist = Infinity;
 
-      if (button) {
-          const idx = parseInt(button.getAttribute('data-action-index') || '-1');
-          if (idx !== -1 && idx !== highlightedIndex) {
-              setHighlightedIndex(idx);
+      if (actionsContainerRef.current) {
+          const buttons = actionsContainerRef.current.querySelectorAll<HTMLButtonElement>('button[data-action-index]');
+          buttons.forEach((btn) => {
+              const rect = btn.getBoundingClientRect();
+              const dx = Math.max(rect.left - e.clientX, 0, e.clientX - rect.right);
+              const dy = Math.max(rect.top - e.clientY, 0, e.clientY - rect.bottom);
+              const dist = Math.max(dx, dy);
+              if (dist < closestDist) {
+                  closestDist = dist;
+                  matchedIdx = parseInt(btn.getAttribute('data-action-index') || '-1');
+              }
+          });
+      }
+
+      if (closestDist === 0) {
+          // Inside the initial button area
+          hasExitedActionRef.current = false;
+          lastActionDistRef.current = 0;
+          if (matchedIdx !== null && matchedIdx !== highlightedIndex) {
+              setHighlightedIndex(matchedIdx);
               triggerHaptic();
           }
       } else {
-          if (highlightedIndex !== null) setHighlightedIndex(null);
+          const prevDist = lastActionDistRef.current;
+          lastActionDistRef.current = closestDist;
+
+          if (!hasExitedActionRef.current) {
+              hasExitedActionRef.current = true;
+              if (highlightedIndex !== null) {
+                  setHighlightedIndex(null);
+              }
+          } else {
+              if (closestDist < prevDist - 0.5) {
+                  // Returning towards a button
+                  if (closestDist <= extraMargin) {
+                      if (matchedIdx !== null && matchedIdx !== highlightedIndex) {
+                          setHighlightedIndex(matchedIdx);
+                          triggerHaptic();
+                      }
+                  }
+              } else if (closestDist > prevDist + 0.5) {
+                  // Moving farther away from buttons
+                  if (highlightedIndex !== null) {
+                      setHighlightedIndex(null);
+                  }
+              }
+          }
       }
   };
 

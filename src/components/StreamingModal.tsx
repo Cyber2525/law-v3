@@ -328,6 +328,8 @@ const IOSNavigationStack: React.FC<NavigationProps> = ({
     const [isCloseReentry, setIsCloseReentry] = useState(false);
     const closeButtonRef = useRef<HTMLButtonElement>(null);
     const isPointerDownOnClose = useRef(false);
+    const hasExitedCloseRef = useRef(false);
+    const lastCloseDistRef = useRef(0);
 
     const handleClosePointerDown = (e: React.PointerEvent<HTMLButtonElement>) => {
         e.stopPropagation();
@@ -336,6 +338,8 @@ const IOSNavigationStack: React.FC<NavigationProps> = ({
         isPointerDownOnClose.current = true;
         setIsCloseReentry(false);
         setIsCloseActive(true);
+        hasExitedCloseRef.current = false;
+        lastCloseDistRef.current = 0;
 
         try {
             e.currentTarget.setPointerCapture(e.pointerId);
@@ -348,22 +352,40 @@ const IOSNavigationStack: React.FC<NavigationProps> = ({
 
         if (!closeButtonRef.current) return;
         const rect = closeButtonRef.current.getBoundingClientRect();
+        const extraMargin = 50;
+        const dx = Math.max(rect.left - e.clientX, 0, e.clientX - rect.right);
+        const dy = Math.max(rect.top - e.clientY, 0, e.clientY - rect.bottom);
+        const dist = Math.max(dx, dy);
 
-        const isInside = (
-            e.clientX >= rect.left &&
-            e.clientX <= rect.right &&
-            e.clientY >= rect.top &&
-            e.clientY <= rect.bottom
-        );
-
-        if (isInside) {
+        if (dist === 0) {
+            hasExitedCloseRef.current = false;
+            lastCloseDistRef.current = 0;
             if (!isCloseActive) {
                 setIsCloseReentry(true);
                 setIsCloseActive(true);
             }
         } else {
-            if (isCloseActive) {
-                setIsCloseActive(false);
+            const prevDist = lastCloseDistRef.current;
+            lastCloseDistRef.current = dist;
+
+            if (!hasExitedCloseRef.current) {
+                hasExitedCloseRef.current = true;
+                if (isCloseActive) {
+                    setIsCloseActive(false);
+                }
+            } else {
+                if (dist < prevDist - 0.5) {
+                    if (dist <= extraMargin) {
+                        if (!isCloseActive) {
+                            setIsCloseReentry(true);
+                            setIsCloseActive(true);
+                        }
+                    }
+                } else if (dist > prevDist + 0.5) {
+                    if (isCloseActive) {
+                        setIsCloseActive(false);
+                    }
+                }
             }
         }
     };
@@ -401,6 +423,9 @@ const IOSNavigationStack: React.FC<NavigationProps> = ({
         setIsCloseReentry(false);
     };
 
+    const hasExitedBackRef = useRef(false);
+    const lastBackDistRef = useRef(0);
+
     const handleBackPointerDown = (e: React.PointerEvent<HTMLButtonElement>) => {
         if (!activeCategory || isAnimatingInternal) return;
         e.stopPropagation();
@@ -411,6 +436,8 @@ const IOSNavigationStack: React.FC<NavigationProps> = ({
         isPointerDownOnBack.current = true;
         setIsBackReentry(false);
         setIsBackButtonActive(true);
+        hasExitedBackRef.current = false;
+        lastBackDistRef.current = 0;
 
         try {
             e.currentTarget.setPointerCapture(e.pointerId);
@@ -425,22 +452,40 @@ const IOSNavigationStack: React.FC<NavigationProps> = ({
 
         if (!backButtonRef.current) return;
         const rect = backButtonRef.current.getBoundingClientRect();
+        const extraMargin = 50;
+        const dx = Math.max(rect.left - e.clientX, 0, e.clientX - rect.right);
+        const dy = Math.max(rect.top - e.clientY, 0, e.clientY - rect.bottom);
+        const dist = Math.max(dx, dy);
 
-        const isInside = (
-            e.clientX >= rect.left &&
-            e.clientX <= rect.right &&
-            e.clientY >= rect.top &&
-            e.clientY <= rect.bottom
-        );
-
-        if (isInside) {
+        if (dist === 0) {
+            hasExitedBackRef.current = false;
+            lastBackDistRef.current = 0;
             if (!isBackButtonActive) {
                 setIsBackReentry(true);
                 setIsBackButtonActive(true);
             }
         } else {
-            if (isBackButtonActive) {
-                setIsBackButtonActive(false);
+            const prevDist = lastBackDistRef.current;
+            lastBackDistRef.current = dist;
+
+            if (!hasExitedBackRef.current) {
+                hasExitedBackRef.current = true;
+                if (isBackButtonActive) {
+                    setIsBackButtonActive(false);
+                }
+            } else {
+                if (dist < prevDist - 0.5) {
+                    if (dist <= extraMargin) {
+                        if (!isBackButtonActive) {
+                            setIsBackReentry(true);
+                            setIsBackButtonActive(true);
+                        }
+                    }
+                } else if (dist > prevDist + 0.5) {
+                    if (isBackButtonActive) {
+                        setIsBackButtonActive(false);
+                    }
+                }
             }
         }
     };

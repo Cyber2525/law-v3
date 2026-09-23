@@ -7,18 +7,23 @@ interface UsePressTrackingOptions {
     callback: () => void;
     durationMs: number;
   };
+  extraMargin?: number;
 }
 
 export function usePressTracking({
   disabled = false,
   onTrigger,
   onLongPress,
+  extraMargin = 50,
 }: UsePressTrackingOptions = {}) {
   const [isPressed, setIsPressed] = useState(false);
+  const [isReentry, setIsReentry] = useState(false);
   const isPointerDown = useRef(false);
   const buttonRef = useRef<any>(null);
   const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isLongPressActive = useRef(false);
+  const hasExitedRef = useRef(false);
+  const lastDistRef = useRef(0);
 
   // Clean up timer on unmount
   useEffect(() => {
@@ -36,8 +41,11 @@ export function usePressTracking({
     if (e.button !== 0) return;
 
     isPointerDown.current = true;
+    setIsReentry(false);
     setIsPressed(true);
     isLongPressActive.current = false;
+    hasExitedRef.current = false;
+    lastDistRef.current = 0;
 
     // Start long press timer if provided
     if (onLongPress) {
@@ -61,17 +69,16 @@ export function usePressTracking({
 
     if (!buttonRef.current) return;
     const rect = buttonRef.current.getBoundingClientRect();
-    
-    // Check if pointer coordinates are within the button's boundaries
-    const isInside = (
-      e.clientX >= rect.left &&
-      e.clientX <= rect.right &&
-      e.clientY >= rect.top &&
-      e.clientY <= rect.bottom
-    );
+    const dx = Math.max(rect.left - e.clientX, 0, e.clientX - rect.right);
+    const dy = Math.max(rect.top - e.clientY, 0, e.clientY - rect.bottom);
+    const dist = Math.max(dx, dy);
 
-    if (isInside) {
+    if (dist === 0) {
+      // Inside original initial radius of the button
+      hasExitedRef.current = false;
+      lastDistRef.current = 0;
       if (!isPressed) {
+        setIsReentry(true);
         setIsPressed(true);
         // Resume long press timer if it was cleared and we returned
         if (onLongPress && !isLongPressActive.current && !longPressTimerRef.current) {
@@ -82,12 +89,48 @@ export function usePressTracking({
         }
       }
     } else {
-      if (isPressed) {
-        setIsPressed(false);
-        // Clear long press timer if we exit the button area
-        if (longPressTimerRef.current) {
-          clearTimeout(longPressTimerRef.current);
-          longPressTimerRef.current = null;
+      // Outside the original button frame
+      const prevDist = lastDistRef.current;
+      lastDistRef.current = dist;
+
+      if (!hasExitedRef.current) {
+        // Just crossed outside the initial radius -> immediately deselect
+        hasExitedRef.current = true;
+        if (isPressed) {
+          setIsPressed(false);
+          setIsReentry(false);
+          // Clear long press timer if we exit the button area
+          if (longPressTimerRef.current) {
+            clearTimeout(longPressTimerRef.current);
+            longPressTimerRef.current = null;
+          }
+        }
+      } else {
+        // In slide mode outside the button
+        if (dist < prevDist - 0.5) {
+          // Moving back towards the button (reactivation on slide within extraMargin)
+          if (dist <= extraMargin) {
+            if (!isPressed) {
+              setIsReentry(true);
+              setIsPressed(true);
+              if (onLongPress && !isLongPressActive.current && !longPressTimerRef.current) {
+                longPressTimerRef.current = setTimeout(() => {
+                  isLongPressActive.current = true;
+                  onLongPress.callback();
+                }, onLongPress.durationMs);
+              }
+            }
+          }
+        } else if (dist > prevDist + 0.5) {
+          // Moving farther away from the button
+          if (isPressed) {
+            setIsPressed(false);
+            setIsReentry(false);
+            if (longPressTimerRef.current) {
+              clearTimeout(longPressTimerRef.current);
+              longPressTimerRef.current = null;
+            }
+          }
         }
       }
     }
@@ -110,6 +153,7 @@ export function usePressTracking({
     // Reset state
     isPointerDown.current = false;
     setIsPressed(false);
+    setIsReentry(false);
     isLongPressActive.current = false;
     if (longPressTimerRef.current) {
       clearTimeout(longPressTimerRef.current);
@@ -133,6 +177,7 @@ export function usePressTracking({
 
     isPointerDown.current = false;
     setIsPressed(false);
+    setIsReentry(false);
     isLongPressActive.current = false;
     if (longPressTimerRef.current) {
       clearTimeout(longPressTimerRef.current);
@@ -146,6 +191,7 @@ export function usePressTracking({
       if (isPointerDown.current) {
         isPointerDown.current = false;
         setIsPressed(false);
+        setIsReentry(false);
         isLongPressActive.current = false;
         if (longPressTimerRef.current) {
           clearTimeout(longPressTimerRef.current);
@@ -159,6 +205,7 @@ export function usePressTracking({
 
   return {
     isPressed,
+    isReentry,
     buttonRef,
     pointerEvents: {
       onPointerDown: handlePointerDown,

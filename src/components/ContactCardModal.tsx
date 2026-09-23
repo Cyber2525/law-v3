@@ -38,6 +38,8 @@ export const ContactCardModal: React.FC<ContactCardModalProps> = ({ isOpen, onCl
   const [isCloseReentry, setIsCloseReentry] = useState(false);
   const closeButtonRef = React.useRef<HTMLButtonElement>(null);
   const isPointerDownOnClose = React.useRef(false);
+  const hasExitedCloseRef = React.useRef(false);
+  const lastCloseDistRef = React.useRef(0);
 
   const handleClosePointerDown = (e: React.PointerEvent<HTMLButtonElement>) => {
       e.stopPropagation();
@@ -46,6 +48,8 @@ export const ContactCardModal: React.FC<ContactCardModalProps> = ({ isOpen, onCl
       isPointerDownOnClose.current = true;
       setIsCloseReentry(false);
       setIsCloseActive(true);
+      hasExitedCloseRef.current = false;
+      lastCloseDistRef.current = 0;
 
       try {
           e.currentTarget.setPointerCapture(e.pointerId);
@@ -58,22 +62,40 @@ export const ContactCardModal: React.FC<ContactCardModalProps> = ({ isOpen, onCl
 
       if (!closeButtonRef.current) return;
       const rect = closeButtonRef.current.getBoundingClientRect();
+      const extraMargin = 50;
+      const dx = Math.max(rect.left - e.clientX, 0, e.clientX - rect.right);
+      const dy = Math.max(rect.top - e.clientY, 0, e.clientY - rect.bottom);
+      const dist = Math.max(dx, dy);
 
-      const isInside = (
-          e.clientX >= rect.left &&
-          e.clientX <= rect.right &&
-          e.clientY >= rect.top &&
-          e.clientY <= rect.bottom
-      );
-
-      if (isInside) {
+      if (dist === 0) {
+          hasExitedCloseRef.current = false;
+          lastCloseDistRef.current = 0;
           if (!isCloseActive) {
               setIsCloseReentry(true);
               setIsCloseActive(true);
           }
       } else {
-          if (isCloseActive) {
-              setIsCloseActive(false);
+          const prevDist = lastCloseDistRef.current;
+          lastCloseDistRef.current = dist;
+
+          if (!hasExitedCloseRef.current) {
+              hasExitedCloseRef.current = true;
+              if (isCloseActive) {
+                  setIsCloseActive(false);
+              }
+          } else {
+              if (dist < prevDist - 0.5) {
+                  if (dist <= extraMargin) {
+                      if (!isCloseActive) {
+                          setIsCloseReentry(true);
+                          setIsCloseActive(true);
+                      }
+                  }
+              } else if (dist > prevDist + 0.5) {
+                  if (isCloseActive) {
+                      setIsCloseActive(false);
+                  }
+              }
           }
       }
   };

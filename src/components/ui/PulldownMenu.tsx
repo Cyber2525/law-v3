@@ -88,12 +88,15 @@ export function PulldownMenu<T extends string = string>({
 
   // States and refs for tracking slide actions and pressed state of blue trigger button
   const [isTriggerPressed, setIsTriggerPressed] = useState(false);
+  const [isTriggerReentry, setIsTriggerReentry] = useState(false);
   const isTriggerPressedRef = useRef(false);
   const setTriggerPressed = (val: boolean) => {
     setIsTriggerPressed(val);
     isTriggerPressedRef.current = val;
   };
   const triggerCleanupRef = useRef<(() => void) | null>(null);
+  const hasExitedTriggerRef = useRef(false);
+  const lastTriggerDistRef = useRef(0);
 
   const cleanupTriggerTracking = () => {
     if (triggerCleanupRef.current) {
@@ -485,6 +488,9 @@ export function PulldownMenu<T extends string = string>({
     initialClickDistanceRef.current = null;
     
     setTriggerPressed(true);
+    setIsTriggerReentry(false);
+    hasExitedTriggerRef.current = false;
+    lastTriggerDistRef.current = 0;
     
     longPressTimerRef.current = setTimeout(() => {
       wasLongPressRef.current = true;
@@ -496,6 +502,7 @@ export function PulldownMenu<T extends string = string>({
       targetDragScaleRef.current = 1.0;
       currentDragScaleRef.current = 1.0;
       setTriggerPressed(false);
+      setIsTriggerReentry(false);
       cleanupTriggerTracking();
     }, 300); 
 
@@ -505,23 +512,49 @@ export function PulldownMenu<T extends string = string>({
       
       if (buttonRef.current) {
         const rect = buttonRef.current.getBoundingClientRect();
-        const isInside = (
-          moveEvent.clientX >= rect.left &&
-          moveEvent.clientX <= rect.right &&
-          moveEvent.clientY >= rect.top &&
-          moveEvent.clientY <= rect.bottom
-        );
-        
-        if (isInside) {
+        const extraMargin = 50;
+        const dx = Math.max(rect.left - moveEvent.clientX, 0, moveEvent.clientX - rect.right);
+        const dy = Math.max(rect.top - moveEvent.clientY, 0, moveEvent.clientY - rect.bottom);
+        const dist = Math.max(dx, dy);
+
+        if (dist === 0) {
+          hasExitedTriggerRef.current = false;
+          lastTriggerDistRef.current = 0;
           if (!isTriggerPressedRef.current) {
+            setIsTriggerReentry(true);
             setTriggerPressed(true);
           }
         } else {
-          if (isTriggerPressedRef.current) {
-            setTriggerPressed(false);
-            if (longPressTimerRef.current) {
-              clearTimeout(longPressTimerRef.current);
-              longPressTimerRef.current = null;
+          const prevDist = lastTriggerDistRef.current;
+          lastTriggerDistRef.current = dist;
+
+          if (!hasExitedTriggerRef.current) {
+            hasExitedTriggerRef.current = true;
+            if (isTriggerPressedRef.current) {
+              setTriggerPressed(false);
+              setIsTriggerReentry(false);
+              if (longPressTimerRef.current) {
+                clearTimeout(longPressTimerRef.current);
+                longPressTimerRef.current = null;
+              }
+            }
+          } else {
+            if (dist < prevDist - 0.5) {
+              if (dist <= extraMargin) {
+                if (!isTriggerPressedRef.current) {
+                  setIsTriggerReentry(true);
+                  setTriggerPressed(true);
+                }
+              }
+            } else if (dist > prevDist + 0.5) {
+              if (isTriggerPressedRef.current) {
+                setTriggerPressed(false);
+                setIsTriggerReentry(false);
+                if (longPressTimerRef.current) {
+                  clearTimeout(longPressTimerRef.current);
+                  longPressTimerRef.current = null;
+                }
+              }
             }
           }
         }
@@ -542,6 +575,7 @@ export function PulldownMenu<T extends string = string>({
       }
       
       setTriggerPressed(false);
+      setIsTriggerReentry(false);
       cleanupTriggerTracking();
     };
 
@@ -552,6 +586,7 @@ export function PulldownMenu<T extends string = string>({
         longPressTimerRef.current = null;
       }
       setTriggerPressed(false);
+      setIsTriggerReentry(false);
       cleanupTriggerTracking();
     };
 
@@ -583,6 +618,9 @@ export function PulldownMenu<T extends string = string>({
     initialClickDistanceRef.current = null;
     
     setTriggerPressed(true);
+    setIsTriggerReentry(false);
+    hasExitedTriggerRef.current = false;
+    lastTriggerDistRef.current = 0;
     
     longPressTimerRef.current = setTimeout(() => {
       wasLongPressRef.current = true;
@@ -594,6 +632,7 @@ export function PulldownMenu<T extends string = string>({
       targetDragScaleRef.current = 1.0;
       currentDragScaleRef.current = 1.0;
       setTriggerPressed(false);
+      setIsTriggerReentry(false);
       cleanupTriggerTracking();
     }, 300);
 
@@ -604,23 +643,49 @@ export function PulldownMenu<T extends string = string>({
       
       if (buttonRef.current) {
         const rect = buttonRef.current.getBoundingClientRect();
-        const isInside = (
-          t.clientX >= rect.left &&
-          t.clientX <= rect.right &&
-          t.clientY >= rect.top &&
-          t.clientY <= rect.bottom
-        );
-        
-        if (isInside) {
+        const extraMargin = 50;
+        const dx = Math.max(rect.left - t.clientX, 0, t.clientX - rect.right);
+        const dy = Math.max(rect.top - t.clientY, 0, t.clientY - rect.bottom);
+        const dist = Math.max(dx, dy);
+
+        if (dist === 0) {
+          hasExitedTriggerRef.current = false;
+          lastTriggerDistRef.current = 0;
           if (!isTriggerPressedRef.current) {
+            setIsTriggerReentry(true);
             setTriggerPressed(true);
           }
         } else {
-          if (isTriggerPressedRef.current) {
-            setTriggerPressed(false);
-            if (longPressTimerRef.current) {
-              clearTimeout(longPressTimerRef.current);
-              longPressTimerRef.current = null;
+          const prevDist = lastTriggerDistRef.current;
+          lastTriggerDistRef.current = dist;
+
+          if (!hasExitedTriggerRef.current) {
+            hasExitedTriggerRef.current = true;
+            if (isTriggerPressedRef.current) {
+              setTriggerPressed(false);
+              setIsTriggerReentry(false);
+              if (longPressTimerRef.current) {
+                clearTimeout(longPressTimerRef.current);
+                longPressTimerRef.current = null;
+              }
+            }
+          } else {
+            if (dist < prevDist - 0.5) {
+              if (dist <= extraMargin) {
+                if (!isTriggerPressedRef.current) {
+                  setIsTriggerReentry(true);
+                  setTriggerPressed(true);
+                }
+              }
+            } else if (dist > prevDist + 0.5) {
+              if (isTriggerPressedRef.current) {
+                setTriggerPressed(false);
+                setIsTriggerReentry(false);
+                if (longPressTimerRef.current) {
+                  clearTimeout(longPressTimerRef.current);
+                  longPressTimerRef.current = null;
+                }
+              }
             }
           }
         }
@@ -639,6 +704,7 @@ export function PulldownMenu<T extends string = string>({
       }
       
       setTriggerPressed(false);
+      setIsTriggerReentry(false);
       cleanupTriggerTracking();
     };
 
@@ -648,6 +714,7 @@ export function PulldownMenu<T extends string = string>({
         longPressTimerRef.current = null;
       }
       setTriggerPressed(false);
+      setIsTriggerReentry(false);
       cleanupTriggerTracking();
     };
 
@@ -723,13 +790,16 @@ export function PulldownMenu<T extends string = string>({
           ref={buttonRef}
           onPointerDown={handleTriggerPointerDown}
           onTouchStart={handleTriggerTouchStart}
-          className={`relative w-8 h-8 rounded-full flex items-center justify-center transition-all duration-200 outline-none border-[2.5px] border-[#007AFF] bg-transparent text-[#007AFF] touch-none select-none after:absolute after:-inset-4 after:content-[''] after:rounded-full cursor-pointer ${
+          className={`relative w-8 h-8 rounded-full flex items-center justify-center outline-none border-[2.5px] border-[#007AFF] bg-transparent text-[#007AFF] touch-none select-none after:absolute after:-inset-4 after:content-[''] after:rounded-full cursor-pointer transition-opacity duration-300 gpu-accelerated ${
               isOpen 
               ? 'opacity-50' 
               : isTriggerPressed
                 ? 'opacity-50'
                 : 'opacity-100'
           }`}
+          style={{
+            transitionDuration: (!isTriggerPressed || isTriggerReentry) ? '300ms' : '0ms'
+          }}
           aria-label="Options Menu"
           tabIndex={isVisible ? 0 : -1} 
         >

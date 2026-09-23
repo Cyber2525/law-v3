@@ -118,13 +118,16 @@ export const ActionButtons: React.FC<ActionButtonsProps> = ({
             ref={ministerioButtonTracking.buttonRef}
             {...ministerioButtonTracking.pointerEvents}
             disabled={isLinkInactive}
-            className={`text-base flex items-center transition-all duration-200 outline-none select-none touch-none ${
+            className={`text-base flex items-center outline-none select-none touch-none transition-opacity duration-300 gpu-accelerated ${
                 isLinkInactive 
                 ? 'text-gray-400 dark:text-gray-600 cursor-not-allowed' 
                 : `text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 cursor-pointer ${
-                    ministerioButtonTracking.isPressed ? 'opacity-50 scale-[0.98]' : 'opacity-100'
+                    ministerioButtonTracking.isPressed ? 'opacity-30' : 'opacity-100'
                   }`
             }`}
+            style={{
+              transitionDuration: (!ministerioButtonTracking.isPressed || ministerioButtonTracking.isReentry) ? '300ms' : '0ms'
+            }}
           >
               {config.mainPage.bottomButtonText} <ExternalLink className="w-5 h-5 ml-1 pointer-events-none" />
           </button>
