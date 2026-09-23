@@ -1,0 +1,60 @@
+@import "tailwindcss";
+@plugin "tailwindcss-animate";
+@custom-variant dark (&:where(.dark, .dark *));
+
+:root {
+  --vaul-drawer-wrapper-border-radius: 12px;
+  --drawer-progress: 0;
+  --drawer-transition-duration: 0.8s;
+}
+
+body {
+  transition: background-color 300ms ease, color 300ms ease;
+}
+
+/* Base wrapper styles for smooth transitions and starting border-radius */
+[vaul-drawer-wrapper] {
+  /* Default state when not animating/scaled */
+  border-radius: 0px;
+  transition-property: transform, border-radius, width, margin !important;
+  transition-duration: var(--drawer-transition-duration) !important;
+  transition-timing-function: cubic-bezier(0.32, 0.72, 0, 1) !important;
+}
+
+/* Kill transitions during active dragging for immediate sync */
+[data-drawer-dragging="true"] [vaul-drawer-wrapper],
+[data-drawer-dragging="true"] [vaul-drawer-wrapper] * ,
+[data-drawer-dragging="true"] [data-vaul-drawer] {
+  transition: none !important;
+}
+
+/* Force Vaul drawer to sync with our custom transition duration */
+[data-vaul-drawer] {
+  transition-duration: var(--drawer-transition-duration) !important;
+}
+
+[data-vaul-drawer-visible] [vaul-drawer-wrapper] {
+  pointer-events: none;
+}
+
+/* Custom Vaul background scaling to match iOS perfectly, synchronized dynamically */
+@media (orientation: portrait) {
+  [vaul-drawer-wrapper] {
+    /* iPhone-like starting rounded corners (0px), transitioning to 13px when scaled */
+    /* Only top corners are rounded, bottom corners stay at 0 */
+    border-radius: calc(var(--drawer-progress) * 13px) calc(var(--drawer-progress) * 13px) 0 0 !important;
+    /* # este es la "pagina en segundo plano" */
+    transform: scale(calc(1 - var(--drawer-progress) * 0.07)) translate3d(0, calc(var(--drawer-progress) * (10vh - 12px)), 0) !important;
+    width: calc(100% - (var(--drawer-progress) * 12px)) !important;
+    margin: 0 calc(var(--drawer-progress) * 6px) !important;
+  }
+}
+
+@media (orientation: landscape) {
+  [vaul-drawer-wrapper] {
+    border-radius: 0 !important;
+    transform: none !important;
+    width: 100% !important;
+    margin: 0 !important;
+  }
+}

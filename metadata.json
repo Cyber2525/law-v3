@@ -1,5 +1,8 @@
 {
-  "name": "Bloqueo Cultura Gob - v3.4",
-  "description": "",
-  "requestFramePermissions": []
+  "name": "Remix Remix Law 4.0.0.5",
+  "description": "A minimalist tool providing a completely blank screen to help you clear your mind and focus without distractions.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
 }

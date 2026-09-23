@@ -1,9 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { Drawer } from 'vaul';
-import * as Dialog from '@radix-ui/react-dialog';
 import { Link, Phone, MapPin, Newspaper, X, MessageCircle, Video, Info } from 'lucide-react';
-// @ts-ignore
-import ministerioLogo from './Ministerio-de-Cultura.png';
+import config from '../config.json';
+import { DesktopModal } from './ui/DesktopModal';
+import { BottomSheet } from './ui/BottomSheet';
 
 function useMediaQuery(query: string) {
   const [value, setValue] = React.useState(() => {
@@ -25,12 +24,12 @@ function useMediaQuery(query: string) {
   return value;
 }
 
-interface MinisterioBottomSheetProps {
+interface ContactCardModalProps {
   isOpen: boolean;
   onClose: () => void;
 }
 
-export const MinisterioBottomSheet: React.FC<MinisterioBottomSheetProps> = ({ isOpen, onClose }) => {
+export const ContactCardModal: React.FC<ContactCardModalProps> = ({ isOpen, onClose }) => {
   const isDesktop = useMediaQuery('(min-width: 600px) and (min-height: 600px)');
   const [isDismissable, setIsDismissable] = useState(false);
 
@@ -117,30 +116,27 @@ export const MinisterioBottomSheet: React.FC<MinisterioBottomSheetProps> = ({ is
       setIsDismissable(false);
       const timer = setTimeout(() => {
         setIsDismissable(true);
-      }, 600);
+      }, 500);
       return () => clearTimeout(timer);
     }
   }, [isOpen]);
 
   const handleDrag = (e: React.PointerEvent<HTMLDivElement>, percentageDragged: number) => {
-    const progress = Math.max(0, Math.min(1, 1 - percentageDragged));
     document.documentElement.setAttribute('data-drawer-dragging', 'true');
     document.documentElement.style.setProperty('--drawer-transition-duration', '0s');
-    document.documentElement.style.setProperty('--drawer-progress', progress.toString());
   };
 
   const handleRelease = (e: React.PointerEvent<HTMLDivElement>, open: boolean) => {
     document.documentElement.removeAttribute('data-drawer-dragging');
     document.documentElement.style.setProperty('--drawer-transition-duration', '0.8s');
-    document.documentElement.style.setProperty('--drawer-progress', open ? '1' : '0');
   };
 
   const handleWeb = () => {
-    window.open('https://www.cultura.gob.es/', '_blank', 'noopener,noreferrer');
+    window.open(config.contactCard.webUrl, '_blank', 'noopener,noreferrer');
   };
 
   const handleCall = () => {
-    window.location.href = 'tel:917017000';
+    window.location.href = `tel:${config.contactCard.phoneNumber}`;
   };
 
   const handleMap = () => {
@@ -154,14 +150,14 @@ export const MinisterioBottomSheet: React.FC<MinisterioBottomSheetProps> = ({ is
     }
 
     if (isIOS) {
-      window.location.href = 'https://maps.apple/p/gVv1Mf3fF0rhE4';
+      window.location.href = config.contactCard.addressUrlApple;
     } else {
-      window.open('https://maps.app.goo.gl/F8wScksuT1ubGc8L9', '_blank', 'noopener,noreferrer');
+      window.open(config.contactCard.addressUrlGoogle, '_blank', 'noopener,noreferrer');
     }
   };
 
   const handleArticle = () => {
-    window.open('https://www.cultura.gob.es/cultura/propiedadintelectual/lucha-contra-la-pirateria.html', '_blank', 'noopener,noreferrer');
+    window.open(config.contactCard.articleUrl, '_blank', 'noopener,noreferrer');
   };
 
   const contentJSX = (
@@ -187,36 +183,36 @@ export const MinisterioBottomSheet: React.FC<MinisterioBottomSheetProps> = ({ is
       </button>
 
       <div className="flex flex-col items-center pt-6 pb-3 px-4">
-        <div className="w-[100px] h-[100px] rounded-full overflow-hidden mb-2">
+        <div className="w-[88px] h-[88px] rounded-full overflow-hidden mb-1.5">
           <img 
-            src={ministerioLogo} 
-            alt="Ministerio de Cultura" 
+            src={config.contactCard.photo} 
+            alt={config.contactCard.name} 
             className="w-full h-full object-cover bg-white" 
           />
         </div>
-        <h2 className="text-[30px] font-bold text-black dark:text-white mb-0 tracking-tight">Ministerio de cultura</h2>
-        <p className="text-[#8e8e93] dark:text-gray-400 text-[18px] font-medium">+34 917 017 000</p>
+        <h2 className="text-[30px] font-bold text-black dark:text-white mb-0 tracking-tight">{config.contactCard.name}</h2>
+        <p className="text-[#8e8e93] dark:text-gray-400 text-[17px] font-medium">{config.contactCard.subName}</p>
       </div>
 
       <div className="px-4 pb-4 flex flex-col gap-3">
         <div className="flex justify-center gap-3">
-          <button onClick={handleWeb} className="flex-1 bg-white dark:bg-[#2c2c2e] rounded-[12px] pt-[24px] pb-[14px] flex flex-col items-center justify-center gap-2 active:bg-[#e5e5ea] dark:active:bg-[#3a3a3c] transition-colors">
-            <Link className="w-[28px] h-[28px] text-black dark:text-white" strokeWidth={1.5} />
-            <span className="text-[14px] text-black dark:text-white font-medium">Web</span>
+          <button onClick={handleWeb} className="flex-1 bg-white dark:bg-[#2c2c2e] rounded-[12px] pt-[15px] pb-[6px] flex flex-col items-center justify-between min-h-[78px] active:bg-[#e5e5ea] dark:active:bg-[#3a3a3c] transition-colors">
+            <Link className="w-[26px] h-[26px] text-black dark:text-white" strokeWidth={1.5} />
+            <span className="text-[17px] text-black dark:text-white font-medium">Web</span>
           </button>
-          <button onClick={handleCall} className="flex-1 bg-white dark:bg-[#2c2c2e] rounded-[12px] pt-[24px] pb-[14px] flex flex-col items-center justify-center gap-2 active:bg-[#e5e5ea] dark:active:bg-[#3a3a3c] transition-colors">
-            <Phone className="w-[28px] h-[28px] text-black dark:text-white" strokeWidth={1.5} />
-            <span className="text-[14px] text-black dark:text-white font-medium">Llamar</span>
+          <button onClick={handleCall} className="flex-1 bg-white dark:bg-[#2c2c2e] rounded-[12px] pt-[15px] pb-[6px] flex flex-col items-center justify-between min-h-[78px] active:bg-[#e5e5ea] dark:active:bg-[#3a3a3c] transition-colors">
+            <Phone className="w-[26px] h-[26px] text-black dark:text-white" strokeWidth={1.5} />
+            <span className="text-[17px] text-black dark:text-white font-medium">Llamar</span>
           </button>
-          <button onClick={handleMap} className="flex-1 bg-white dark:bg-[#2c2c2e] rounded-[12px] pt-[24px] pb-[14px] flex flex-col items-center justify-center gap-2 active:bg-[#e5e5ea] dark:active:bg-[#3a3a3c] transition-colors">
-            <MapPin className="w-[28px] h-[28px] text-black dark:text-white" strokeWidth={1.5} />
-            <span className="text-[14px] text-black dark:text-white font-medium">Dirección</span>
+          <button onClick={handleMap} className="flex-1 bg-white dark:bg-[#2c2c2e] rounded-[12px] pt-[15px] pb-[6px] flex flex-col items-center justify-between min-h-[78px] active:bg-[#e5e5ea] dark:active:bg-[#3a3a3c] transition-colors">
+            <MapPin className="w-[26px] h-[26px] text-black dark:text-white" strokeWidth={1.5} />
+            <span className="text-[17px] text-black dark:text-white font-medium">Dirección</span>
           </button>
         </div>
 
-        <button onClick={handleArticle} className="w-full bg-white dark:bg-[#2c2c2e] rounded-[12px] pl-5 pr-4 py-5 flex items-center justify-between active:bg-[#e5e5ea] dark:active:bg-[#3a3a3c] transition-colors">
-          <span className="text-black dark:text-white text-[19px] font-medium">Ver el artículo anti piratería</span>
-          <Info className="w-[28px] h-[28px] text-black dark:text-white" strokeWidth={1.5} />
+        <button onClick={handleArticle} className="w-full bg-white dark:bg-[#2c2c2e] rounded-[12px] pl-4 pr-3 py-[12px] flex items-center justify-between active:bg-[#e5e5ea] dark:active:bg-[#3a3a3c] transition-colors">
+          <span className="text-black dark:text-white text-[18px] font-medium">{config.contactCard.articleButtonText}</span>
+          <Info className="w-[26px] h-[26px] text-black dark:text-white" strokeWidth={1.5} />
         </button>
       </div>
     </div>
@@ -224,36 +220,28 @@ export const MinisterioBottomSheet: React.FC<MinisterioBottomSheetProps> = ({ is
 
   if (isDesktop) {
     return (
-      <div className={`fixed inset-0 z-50 flex items-center justify-center p-4 ${isOpen ? 'visible' : 'invisible delay-[800ms] pointer-events-none'}`}>
-        <div 
-          className={`absolute inset-0 bg-black/[0.13] transition-all duration-[800ms] ease-[cubic-bezier(0.32,0.72,0,1)] ${isOpen ? 'opacity-100' : 'opacity-0'}`}
-          onClick={onClose}
-        />
-        <div 
-          className={`relative w-[480px] max-h-[85vh] flex flex-col overflow-hidden isolation-isolate bg-[#f2f2f7]/70 dark:bg-[#1c1c1e]/70 rounded-[16px] shadow-2xl transform transition-all duration-[800ms] ease-[cubic-bezier(0.32,0.72,0,1)] ${isOpen ? 'translate-y-0' : 'translate-y-[100vh]'}`}
-        >
-          {contentJSX}
-        </div>
-      </div>
+      <DesktopModal
+        isOpen={isOpen}
+        onClose={onClose}
+        containerClassName="flex flex-col w-[480px] max-h-[85vh]"
+      >
+        {contentJSX}
+      </DesktopModal>
     );
   }
 
   return (
-    <Drawer.Root 
-      open={isOpen} 
-      onOpenChange={(open) => !open && onClose()} 
+    <BottomSheet
+      isOpen={isOpen}
+      onClose={onClose}
+      isDismissable={isDismissable}
       shouldScaleBackground={false}
-      dismissible={isDismissable}
+      title={config.contactCard.name}
       onDrag={handleDrag}
       onRelease={handleRelease}
+      contentClassName="h-auto"
     >
-      <Drawer.Portal>
-        <Drawer.Overlay className="fixed inset-0 bg-black/[0.13] z-50 transition-opacity" />
-        <Drawer.Content className="bg-[#f2f2f7] dark:bg-[#1c1c1e] flex flex-col rounded-t-[13px] h-auto fixed bottom-0 left-0 right-0 z-50 outline-none shadow-2xl landscape:rounded-t-[13px] landscape:rounded-b-none landscape:left-[19px] landscape:right-[19px] landscape:bottom-0 landscape:mx-auto landscape:max-w-lg">
-          <Drawer.Title className="sr-only">Ministerio de cultura</Drawer.Title>
-          {contentJSX}
-        </Drawer.Content>
-      </Drawer.Portal>
-    </Drawer.Root>
+      {contentJSX}
+    </BottomSheet>
   );
 };
