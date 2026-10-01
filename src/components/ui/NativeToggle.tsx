@@ -17,13 +17,13 @@ interface NativeToggleProps {
  * A reusable, iOS-style toggle switch component.
  * Handles touch gestures, snapping animations, and proximity-based knob expansion.
  */
-export const NativeToggle: React.FC<NativeToggleProps> = ({ 
+export const NativeToggle = React.forwardRef<HTMLDivElement, NativeToggleProps>(({ 
   checked, 
   onChange, 
   className = '',
   disabled = false,
   scale = 1
-}) => {
+}, ref) => {
   // --- Interaction State ---
   const [isPressed, setIsPressed] = useState(false);
   // Track if the finger is close enough horizontally to keep the knob expanded
@@ -33,8 +33,10 @@ export const NativeToggle: React.FC<NativeToggleProps> = ({
   
   // Refs for gesture tracking
   const containerRef = useRef<HTMLDivElement>(null);
+  const switchRef = useRef<HTMLDivElement>(null);
   const startX = useRef(0);
   const hasDragged = useRef(false);
+  const wasPointerInteraction = useRef(false);
 
   // We need a ref to access the latest state/props inside the global event listeners
   const stateRef = useRef({ checked, optimisticMode, disabled, scale });
@@ -64,6 +66,7 @@ export const NativeToggle: React.FC<NativeToggleProps> = ({
   const handlePointerDown = (e: React.PointerEvent) => {
     if (disabled) return;
     e.preventDefault();
+    wasPointerInteraction.current = true;
     
     setIsPressed(true);
     setIsNear(true); // Initially near
@@ -128,12 +131,22 @@ export const NativeToggle: React.FC<NativeToggleProps> = ({
       }
       
       setOptimisticMode(null);
+      setTimeout(() => {
+        wasPointerInteraction.current = false;
+      }, 100);
     };
 
     listenersRef.current = { move: handleGlobalMove, up: handleGlobalUp };
     window.addEventListener('pointermove', handleGlobalMove);
     window.addEventListener('pointerup', handleGlobalUp);
     window.addEventListener('pointercancel', handleGlobalUp);
+  };
+
+  const handleClick = () => {
+    if (disabled) return;
+    if (!wasPointerInteraction.current) {
+      onChange(!checked);
+    }
   };
 
   useEffect(() => {
@@ -160,8 +173,18 @@ export const NativeToggle: React.FC<NativeToggleProps> = ({
       }}
     >
         <div 
+        ref={(node) => {
+          (switchRef as any).current = node;
+          if (typeof ref === 'function') {
+            ref(node);
+          } else if (ref) {
+            (ref as any).current = node;
+          }
+        }}
+        id="native-toggle-theme"
         onPointerDown={handlePointerDown}
-        className={`absolute top-0 left-0 w-[51px] h-[31px] rounded-full touch-none select-none transition-colors duration-300 
+        onClick={handleClick}
+        className={`absolute top-0 left-0 w-[51px] h-[31px] rounded-full touch-none select-none transition-colors duration-[400ms] 
             ${disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}
             ${activeMode ? 'bg-[#34C759]' : 'bg-[#E9E9EA] dark:bg-[#39393D]'} 
         `}
@@ -180,11 +203,13 @@ export const NativeToggle: React.FC<NativeToggleProps> = ({
                 style={{
                     width: `${currentKnobWidth}px`,
                     left: `${currentPos}px`,
-                    transition: 'all 0.3s cubic-bezier(0.32,0.72,0,1)',
+                    transition: 'all 0.4s cubic-bezier(0.32,0.72,0,1)',
                     willChange: 'width, left'
                 }}
             />
         </div>
     </div>
   );
-};
+});
+
+NativeToggle.displayName = 'NativeToggle';

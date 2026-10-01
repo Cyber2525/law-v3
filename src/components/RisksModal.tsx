@@ -97,15 +97,29 @@ function useMediaQuery(query: string) {
 interface RisksModalProps {
   isOpen: boolean;
   onClose: (segment: RiskType) => void;
+  isDarkMode?: boolean;
 }
 
-export const RisksModal: React.FC<RisksModalProps> = ({ isOpen, onClose }) => {
+export const RisksModal: React.FC<RisksModalProps> = ({ isOpen, onClose, isDarkMode: isDarkModeProp }) => {
   const isDesktop = useMediaQuery('(min-width: 600px) and (min-height: 600px)');
   const isLandscape = useMediaQuery('(orientation: landscape)');
   const [activeSegment, setActiveSegment] = useState<RiskType>('legal');
   const [isDismissable, setIsDismissable] = useState(false);
   const [scrollProgress, setScrollProgress] = useState(0);
-  const [isDarkMode, setIsDarkMode] = useState(false);
+  const [isDarkMode, setIsDarkMode] = useState(() => {
+    if (typeof isDarkModeProp === 'boolean') return isDarkModeProp;
+    if (typeof window !== 'undefined') {
+      return document.documentElement.classList.contains('dark');
+    }
+    return false;
+  });
+
+  useEffect(() => {
+    if (typeof isDarkModeProp === 'boolean') {
+      setIsDarkMode(isDarkModeProp);
+    }
+  }, [isDarkModeProp]);
+
   const [menuHeight, setMenuHeight] = useState<number | undefined>(undefined);
   const [isAnimating, setIsAnimatingInternal] = useState(false);
 

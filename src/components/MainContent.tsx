@@ -62,16 +62,16 @@ export const MainContent: React.FC<MainContentProps> = ({
         <div className={`absolute -bottom-2 -right-2 bg-white/50 dark:bg-black/50 backdrop-blur-xl p-1.5 rounded-full z-20 pointer-events-none transition-all duration-300 ease-in-out ${stopAnimation ? 'opacity-0 scale-50' : 'opacity-100 scale-100'}`}>
             <div className="animate-float-diagonal">
                 {/* @ts-ignore */}
-                <TbPointer className="w-7 h-7 text-black dark:text-white transition-colors duration-300" />
+                <TbPointer className="w-7 h-7 text-black dark:text-white transition-colors duration-[400ms]" />
             </div>
         </div>
       </div>
       
       <div className="space-y-2 max-w-md">
-        <h1 className="text-3xl font-bold tracking-tight text-gray-900 dark:text-white transition-colors duration-300">
+        <h1 className="text-3xl font-bold tracking-tight text-gray-900 dark:text-white transition-colors duration-[400ms]">
           {config.mainPage.title}
         </h1>
-        <p className="text-gray-500 dark:text-gray-400 text-lg leading-relaxed transition-colors duration-300 whitespace-pre-line">
+        <p className="text-gray-500 dark:text-gray-400 text-lg leading-relaxed transition-colors duration-[400ms] whitespace-pre-line">
           {config.mainPage.description}
         </p>
       </div>

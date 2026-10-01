@@ -97,15 +97,28 @@ const ItemList: React.FC<ItemListProps> = ({ icon, label, onClick, onPointerDown
 interface StreamingModalProps {
   isOpen: boolean;
   onClose: (wasInSubpage?: boolean) => void;
+  isDarkMode?: boolean;
 }
 
-export const StreamingModal: React.FC<StreamingModalProps> = ({ isOpen, onClose }) => {
+export const StreamingModal: React.FC<StreamingModalProps> = ({ isOpen, onClose, isDarkMode: isDarkModeProp }) => {
   const isDesktop = useMediaQuery('(min-width: 600px) and (min-height: 600px)');
   const isLandscape = useMediaQuery('(orientation: landscape)');
   const [activeCategory, setActiveCategory] = useState<CategoryData | null>(null);
   const [isDismissable, setIsDismissable] = useState(false);
   const [scrollProgress, setScrollProgress] = useState(0);
-  const [isDarkMode, setIsDarkMode] = useState(false);
+  const [isDarkMode, setIsDarkMode] = useState(() => {
+    if (typeof isDarkModeProp === 'boolean') return isDarkModeProp;
+    if (typeof window !== 'undefined') {
+      return document.documentElement.classList.contains('dark');
+    }
+    return false;
+  });
+
+  useEffect(() => {
+    if (typeof isDarkModeProp === 'boolean') {
+      setIsDarkMode(isDarkModeProp);
+    }
+  }, [isDarkModeProp]);
 
   useEffect(() => {
     const checkDark = () => setIsDarkMode(document.documentElement.classList.contains('dark'));

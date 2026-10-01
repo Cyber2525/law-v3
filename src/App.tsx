@@ -284,6 +284,60 @@ const App: React.FC = () => {
     }
   }, [isDarkMode]);
 
+  const toggleRef = useRef<HTMLDivElement>(null);
+  const isDarkModeRef = useRef(isDarkMode);
+  useEffect(() => {
+    isDarkModeRef.current = isDarkMode;
+  }, [isDarkMode]);
+
+  // Listener del navegador (Opción 2):
+  // Si el modo del navegador difiere del de la página (por evento de cambio o al regresar el foco/visibilidad),
+  // se hace click sobre el toggle en lugar de mutar el estado directamente.
+  useEffect(() => {
+    if (typeof window === 'undefined' || !window.matchMedia) return;
+
+    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+
+    const syncWithBrowserIfDifferent = () => {
+      const browserIsDark = mediaQuery.matches;
+      if (browserIsDark !== isDarkModeRef.current) {
+        const toggleEl = toggleRef.current || document.getElementById('native-toggle-theme');
+        if (toggleEl) {
+          toggleEl.click();
+        } else {
+          setIsDarkMode(browserIsDark);
+        }
+      }
+    };
+
+    const handleMediaChange = () => {
+      syncWithBrowserIfDifferent();
+    };
+
+    if (mediaQuery.addEventListener) {
+      mediaQuery.addEventListener('change', handleMediaChange);
+    } else {
+      mediaQuery.addListener(handleMediaChange);
+    }
+
+    const handleFocusOrVisibility = () => {
+      syncWithBrowserIfDifferent();
+    };
+
+    window.addEventListener('focus', handleFocusOrVisibility);
+    document.addEventListener('visibilitychange', handleFocusOrVisibility);
+
+    return () => {
+      if (mediaQuery.removeEventListener) {
+        mediaQuery.removeEventListener('change', handleMediaChange);
+      } else {
+        mediaQuery.removeListener(handleMediaChange);
+      }
+      window.removeEventListener('focus', handleFocusOrVisibility);
+      document.removeEventListener('visibilitychange', handleFocusOrVisibility);
+    };
+  }, []);
+
   const enableDebugMode = () => {
     setIsDebugVisible(true);
     localStorage.setItem('DEBUG_MODE_ENABLED', 'true');
@@ -298,10 +352,10 @@ const App: React.FC = () => {
   return (
     <div className="min-h-screen bg-[#0a0a0a] relative">
       <div vaul-drawer-wrapper="" className={`min-h-screen ${isDarkMode ? 'dark' : ''} relative z-10 overflow-hidden`}>
-        <div className={`min-h-screen flex flex-col items-center relative overflow-hidden transition-colors duration-300 ${isDarkMode ? 'text-white selection:bg-red-500/30' : 'text-black selection:bg-blue-500/30'}`}>
+        <div className={`min-h-screen flex flex-col items-center relative overflow-hidden transition-colors duration-[400ms] ${isDarkMode ? 'text-white selection:bg-red-500/30' : 'text-black selection:bg-blue-500/30'}`}>
           
           {/* Base Background Layer */}
-          <div className={`absolute inset-0 transition-colors duration-300 ${isDarkMode ? 'bg-[#0a0a0a]' : 'bg-[#F2F2F7]'}`} />
+          <div className={`absolute inset-0 transition-colors duration-[400ms] ${isDarkMode ? 'bg-[#0a0a0a]' : 'bg-[#F2F2F7]'}`} />
           
           {/* Smalling Dark Mode Overlay */}
           <div 
@@ -328,13 +382,16 @@ const App: React.FC = () => {
         <div 
             style={{ willChange: 'background-color, border-color, color' }}
             className={`
-            flex items-center gap-3 bg-white dark:bg-[rgba(24,24,26,0.70)] pl-4 pr-1 py-1 rounded-full border border-black/5 dark:border-white/10 transition-all duration-300 z-30
+            flex items-center gap-3 pl-4 pr-1 py-1 rounded-full transition-colors duration-[400ms] z-30
+            ${isDarkMode 
+              ? 'bg-[rgba(24,24,26,0.70)] border border-white/10' 
+              : 'bg-white border border-black/5'}
             relative -mt-[15px] mb-6
             landscape:absolute landscape:top-[17px] landscape:right-6 landscape:mt-0 landscape:mb-0
             md:absolute md:top-[17px] md:right-6 md:mt-0 md:mb-0
         `}>
-            <span className="text-[15px] font-medium text-gray-900 dark:text-white mr-1 select-none transition-colors duration-300">Modo Oscuro</span>
-            <NativeToggle checked={isDarkMode} onChange={setIsDarkMode} />
+            <span className={`text-[15px] font-medium mr-1 select-none transition-colors duration-[400ms] ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Modo Oscuro</span>
+            <NativeToggle ref={toggleRef} checked={isDarkMode} onChange={setIsDarkMode} />
         </div>
         
         <div className="flex-1" />
@@ -346,6 +403,7 @@ const App: React.FC = () => {
           isStreamingOpen={streamingModalOpen}
           isRisksCooldown={isRisksCooldown}
           isRisksOpen={risksModalOpen}
+          isDarkMode={isDarkMode}
         />
       </div>
 

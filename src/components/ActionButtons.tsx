@@ -12,6 +12,7 @@ interface ActionButtonsProps {
   isRisksOpen?: boolean;
   isStreamingCooldown?: boolean;
   isRisksCooldown?: boolean;
+  isDarkMode?: boolean;
 }
 
 export const ActionButtons: React.FC<ActionButtonsProps> = ({ 
@@ -20,7 +21,8 @@ export const ActionButtons: React.FC<ActionButtonsProps> = ({
   isStreamingOpen = false,
   isRisksOpen = false,
   isStreamingCooldown = false,
-  isRisksCooldown = false
+  isRisksCooldown = false,
+  isDarkMode = false
 }) => {
   const [isBottomSheetOpen, setIsBottomSheetOpen] = useState(false);
 
@@ -54,10 +56,15 @@ export const ActionButtons: React.FC<ActionButtonsProps> = ({
   // El link externo solo se bloquea si el modal de streaming está abierto
   const isLinkInactive = isStreamingOpen;
 
-  // --- Button 1: Volver atrás ---
+  // --- Button 1: Volver atrás (navega a un New Tab en vez de Google/Chrome) ---
   const backButtonTracking = usePressTracking({
     onTrigger: () => {
-      window.location.href = 'https://www.google.com';
+      try {
+        window.close();
+      } catch (e) {
+        // Ignorar si el navegador bloquea window.close()
+      }
+      window.location.href = 'about:blank';
     }
   });
 
@@ -87,9 +94,13 @@ export const ActionButtons: React.FC<ActionButtonsProps> = ({
             animate={backButtonTracking.isPressed ? { scale: 0.92 } : { scale: 1 }}
             transition={{ type: 'spring', stiffness: 600, damping: 30 }}
             style={{ willChange: 'transform, background-color, border-color, color' }}
-            className="w-full h-14 min-h-[56px] landscape:flex-none landscape:w-[38%] md:flex-none md:w-[38%] shrink-0 bg-white/60 dark:bg-white/10 hover:bg-white/80 dark:hover:bg-white/15 border-2 border-black/5 dark:border-white/10 transition-[background-color,border-color,color] duration-300 rounded-2xl font-medium text-lg flex items-center justify-center text-gray-900 dark:text-white cursor-pointer select-none touch-none"
+            className={`w-full h-14 min-h-[56px] landscape:flex-none landscape:w-[38%] md:flex-none md:w-[38%] shrink-0 border-2 rounded-2xl font-medium text-lg flex items-center justify-center cursor-pointer select-none touch-none transition-colors duration-[400ms] ${
+              isDarkMode 
+                ? 'bg-white/10 hover:bg-white/15 border-white/10 text-white' 
+                : 'bg-white/60 hover:bg-white/80 border-black/5 text-gray-900'
+            }`}
           >
-            <ArrowLeft className="w-5 h-5 mr-2 text-black dark:text-white transition-colors duration-300 pointer-events-none" />
+            <ArrowLeft className={`w-5 h-5 mr-2 pointer-events-none transition-colors duration-[400ms] ${isDarkMode ? 'text-white' : 'text-black'}`} />
             Volver atrás
           </motion.button>
 

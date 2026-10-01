@@ -105,6 +105,10 @@ export function PulldownMenu<T extends string = string>({
     }
   };
 
+  const isClosingRef = useRef(false);
+  const isExecutingActionRef = useRef(false);
+  const hasPushedStateRef = useRef(false);
+
   useEffect(() => {
     return () => {
       if (triggerCleanupRef.current) {
@@ -117,8 +121,9 @@ export function PulldownMenu<T extends string = string>({
   }, []);
 
   const openMenu = () => {
-    if (isOpen) return;
+    if (isOpen || isClosingRef.current) return;
     window.history.pushState({ ...window.history.state, debugMenu: true }, '');
+    hasPushedStateRef.current = true;
     if (buttonRef.current) {
       const rect = buttonRef.current.getBoundingClientRect();
       setMenuPos({
@@ -130,11 +135,18 @@ export function PulldownMenu<T extends string = string>({
   };
 
   const closeMenu = () => {
-    if (window.history.state?.debugMenu) {
+    if (isClosingRef.current) return;
+    isClosingRef.current = true;
+    setIsOpen(false);
+    if (hasPushedStateRef.current && window.history.state?.debugMenu) {
+      hasPushedStateRef.current = false;
       window.history.back();
     } else {
-      setIsOpen(false);
+      hasPushedStateRef.current = false;
     }
+    setTimeout(() => {
+      isClosingRef.current = false;
+    }, 400);
   };
 
   // --- Haptic Feedback Helper ---
@@ -145,6 +157,12 @@ export function PulldownMenu<T extends string = string>({
   };
 
   const executeAction = (id: string) => {
+    if (isExecutingActionRef.current) return;
+    isExecutingActionRef.current = true;
+    setTimeout(() => {
+      isExecutingActionRef.current = false;
+    }, 400);
+
     onSelect(id as T);
     const clickedOpt = options.find(
       (o) => o.type !== 'separator' && o.type !== 'big-separator' && o.id === id
@@ -429,7 +447,10 @@ export function PulldownMenu<T extends string = string>({
   useEffect(() => {
     const handlePopState = (e: PopStateEvent) => {
       if (!e.state?.debugMenu) {
+        hasPushedStateRef.current = false;
         setIsOpen(false);
+        isClosingRef.current = false;
+        isExecutingActionRef.current = false;
       }
     };
     window.addEventListener('popstate', handlePopState);
@@ -762,7 +783,7 @@ export function PulldownMenu<T extends string = string>({
 
   const handlePointerUpMenu = (e: React.PointerEvent) => {
     if (e.pointerType === 'touch') return;
-    if (highlightedId) {
+    if (isSliding && highlightedId) {
       executeAction(highlightedId);
     }
     setHighlightedId(null);
