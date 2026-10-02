@@ -984,6 +984,7 @@ const IOSNavigationStack: React.FC<NavigationProps> = ({
 }) => {
     const [menuHeight, setMenuHeight] = useState<number | undefined>(undefined);
     const [displayedCategory, setDisplayedCategory] = useState<CategoryData | null>(activeCategory);
+    const displayedCategoryRef = useRef<CategoryData | null>(activeCategory);
     const prevCategoryRef = useRef(activeCategory);
     const categoryScrollPositions = useRef<Record<string, number>>({});
     const isProgrammaticScroll = useRef(false);
@@ -1059,6 +1060,50 @@ const IOSNavigationStack: React.FC<NavigationProps> = ({
         onSelectCategory(cat);
     };
 
+    const handleTransitionEnd = (e: React.TransitionEvent<HTMLDivElement>) => {
+        if (e.target !== sliderRef.current) return;
+        if (e.propertyName !== 'transform') return;
+
+        if (!activeCategory && navDirectionRef.current === 'returning') {
+            const currentTx = getCurrentTranslateX(sliderRef.current);
+            if (currentTx >= -2) {
+                if (lockoutTimerRef.current) {
+                    clearTimeout(lockoutTimerRef.current);
+                    lockoutTimerRef.current = null;
+                }
+                setIsAnimatingInternal(false);
+                isTransitioningRef.current = false;
+                updateNavDirection('idle');
+                setSelectedCatId(null);
+                selectedCatIdRef.current = null;
+                heldOver200msRef.current = false;
+                setDisplayedCategory(null);
+                displayedCategoryRef.current = null;
+                if (sliderRef.current) {
+                    sliderRef.current.style.setProperty('--active-cat-opacity', '0');
+                }
+                updateLiveScrollProgress();
+            }
+        } else if (activeCategory && navDirectionRef.current === 'forward') {
+            const currentTx = getCurrentTranslateX(sliderRef.current);
+            const containerWidth = sliderRef.current.offsetWidth / 2;
+            if (currentTx <= -containerWidth + 2) {
+                if (lockoutTimerRef.current) {
+                    clearTimeout(lockoutTimerRef.current);
+                    lockoutTimerRef.current = null;
+                }
+                setIsAnimatingInternal(false);
+                isTransitioningRef.current = false;
+                updateNavDirection('services');
+                heldOver200msRef.current = false;
+                if (sliderRef.current) {
+                    sliderRef.current.style.setProperty('--active-cat-opacity', '1');
+                }
+                updateLiveScrollProgress();
+            }
+        }
+    };
+
     const startLockout = (duration = 800) => {
         if (lockoutTimerRef.current) clearTimeout(lockoutTimerRef.current);
         setIsAnimatingInternal(true);
@@ -1089,6 +1134,8 @@ const IOSNavigationStack: React.FC<NavigationProps> = ({
                 setSelectedCatId(null);
                 selectedCatIdRef.current = null;
                 heldOver200msRef.current = false;
+                setDisplayedCategory(null);
+                displayedCategoryRef.current = null;
                 if (sliderRef.current) {
                     sliderRef.current.style.setProperty('--active-cat-opacity', '0');
                 }
@@ -1110,6 +1157,8 @@ const IOSNavigationStack: React.FC<NavigationProps> = ({
             updateNavDirection('idle');
             setSelectedCatId(null);
             selectedCatIdRef.current = null;
+            setDisplayedCategory(null);
+            displayedCategoryRef.current = null;
             if (sliderRef.current) {
                 sliderRef.current.style.setProperty('--active-cat-opacity', '0');
             }
@@ -1373,6 +1422,7 @@ const IOSNavigationStack: React.FC<NavigationProps> = ({
     useEffect(() => {
         if (activeCategory) {
             setDisplayedCategory(activeCategory);
+            displayedCategoryRef.current = activeCategory;
         }
     }, [activeCategory]);
 
@@ -1628,6 +1678,22 @@ const IOSNavigationStack: React.FC<NavigationProps> = ({
                 return;
             }
             if (absX > absY && absX >= 7) {
+                const currentTxNow = sliderRef.current ? getCurrentTranslateX(sliderRef.current) : 0;
+                const isReturnActive = Boolean(
+                    !activeCategory &&
+                    (displayedCategory || displayedCategoryRef.current) &&
+                    (
+                        navDirectionRef.current === 'returning' ||
+                        isTransitioningRef.current ||
+                        currentTxNow < -2
+                    )
+                );
+                const canSwipe = Boolean(activeCategory) || isReturnActive;
+                if (!canSwipe) {
+                    isHorizontalSwipeRef.current = false;
+                    return;
+                }
+
                 // ACTIVAR EL MOVIMIENTO HORIZONTAL REAL INMEDIATO
                 isHorizontalSwipeRef.current = true;
                 hasSwipedRef.current = true;
@@ -1977,6 +2043,7 @@ const IOSNavigationStack: React.FC<NavigationProps> = ({
             >
                 <div 
                     ref={sliderRef}
+                    onTransitionEnd={handleTransitionEnd}
                     style={{ 
                         transition: navTransition,
                         transform: activeCategory ? 'translateX(-50%)' : 'translateX(0%)',
@@ -1998,58 +2065,60 @@ const IOSNavigationStack: React.FC<NavigationProps> = ({
                         }}
                         className="w-[50%] h-full shrink-0 overflow-y-auto no-scrollbar touch-pan-y"
                     >
-                        <div className="pb-8 pt-[86px]">
-                             <div className="px-4 mb-2">
-                                <h3 className="text-[13px] text-gray-500 dark:text-gray-400 uppercase tracking-wide ml-4">Categorías</h3>
-                            </div>
-                            <div className={`mx-4 bg-white dark:bg-[#2C2C2E]/70 rounded-[12px] overflow-hidden ${isIdaAnimation ? 'pointer-events-none' : ''}`}>
-                                {CATEGORIES.map((cat, i) => {
-                                    const activeId = selectedCatIdRef.current || selectedCatId || activeCategory?.id;
-                                    const isThisSelected = activeId === cat.id;
-                                    const isNextSelected = activeId === CATEGORIES[i + 1]?.id;
-                                    const isThisPressed = pressedCatId === cat.id;
-                                    const isNextPressed = pressedCatId === CATEGORIES[i + 1]?.id;
+                        <div className="pb-8 pt-[86px] flex flex-col">
+                            <div>
+                                 <div className="px-4 mb-2">
+                                    <h3 className="text-[13px] text-gray-500 dark:text-gray-400 uppercase tracking-wide ml-4">Categorías</h3>
+                                </div>
+                                <div className={`mx-4 bg-white dark:bg-[#2C2C2E]/70 rounded-[12px] overflow-hidden ${isIdaAnimation ? 'pointer-events-none' : ''}`}>
+                                    {CATEGORIES.map((cat, i) => {
+                                        const activeId = selectedCatIdRef.current || selectedCatId || activeCategory?.id;
+                                        const isThisSelected = activeId === cat.id;
+                                        const isNextSelected = activeId === CATEGORIES[i + 1]?.id;
+                                        const isThisPressed = pressedCatId === cat.id;
+                                        const isNextPressed = pressedCatId === CATEGORIES[i + 1]?.id;
 
-                                    const hideDividerImmediate = isThisPressed || isNextPressed;
-                                    const isSyncDivider = !hideDividerImmediate && (isThisSelected || isNextSelected);
+                                        const hideDividerImmediate = isThisPressed || isNextPressed;
+                                        const isSyncDivider = !hideDividerImmediate && (isThisSelected || isNextSelected);
 
-                                    return (
-                                        <div key={cat.id} className="relative">
-                                            <CategoryListItem 
-                                                cat={cat}
-                                                icon={<div className="w-7 h-7 rounded-[6px] bg-blue-500 flex items-center justify-center">{cat.icon}</div>} 
-                                                label={cat.title} 
-                                                onClick={(wasHeld) => {
-                                                    if (hasSwipedRef.current || isIdaAnimation) return;
-                                                    handleSelectCategory(cat, wasHeld);
-                                                }} 
-                                                isSelected={isThisSelected}
-                                                disabled={isIdaAnimation}
-                                                scrollContainerRef={categoriesRef}
-                                                sliderRef={sliderRef}
-                                                onPressChange={(pressed) => setPressedCatId(pressed ? cat.id : null)}
-                                                onLongPressStart={() => {
-                                                    isCategoryLongPressActiveRef.current = true;
-                                                    hasCategoryLongPressedRef.current = true;
-                                                }}
-                                                onLongPressEnd={() => {
-                                                    isCategoryLongPressActiveRef.current = false;
-                                                }}
-                                                showChevron 
-                                            />
-                                            {i < CATEGORIES.length - 1 && (
-                                                <div 
-                                                    className="absolute bottom-0 left-[56px] right-0 h-[1px] bg-black/10 dark:bg-white/10 pointer-events-none" 
-                                                    style={{
-                                                        opacity: hideDividerImmediate 
-                                                             ? 0 
-                                                             : (isSyncDivider ? 'calc(1 - var(--active-cat-opacity, 0))' : 1)
+                                        return (
+                                            <div key={cat.id} className="relative">
+                                                <CategoryListItem 
+                                                    cat={cat}
+                                                    icon={<div className="w-7 h-7 rounded-[6px] bg-blue-500 flex items-center justify-center">{cat.icon}</div>} 
+                                                    label={cat.title} 
+                                                    onClick={(wasHeld) => {
+                                                        if (hasSwipedRef.current || isIdaAnimation) return;
+                                                        handleSelectCategory(cat, wasHeld);
+                                                    }} 
+                                                    isSelected={isThisSelected}
+                                                    disabled={isIdaAnimation}
+                                                    scrollContainerRef={categoriesRef}
+                                                    sliderRef={sliderRef}
+                                                    onPressChange={(pressed) => setPressedCatId(pressed ? cat.id : null)}
+                                                    onLongPressStart={() => {
+                                                        isCategoryLongPressActiveRef.current = true;
+                                                        hasCategoryLongPressedRef.current = true;
                                                     }}
+                                                    onLongPressEnd={() => {
+                                                        isCategoryLongPressActiveRef.current = false;
+                                                    }}
+                                                    showChevron 
                                                 />
-                                            )}
-                                        </div>
-                                    );
-                                })}
+                                                {i < CATEGORIES.length - 1 && (
+                                                    <div 
+                                                        className="absolute bottom-0 left-[56px] right-0 h-[1px] bg-black/10 dark:bg-white/10 pointer-events-none" 
+                                                        style={{
+                                                            opacity: hideDividerImmediate 
+                                                                 ? 0 
+                                                                 : (isSyncDivider ? 'calc(1 - var(--active-cat-opacity, 0))' : 1)
+                                                        }}
+                                                    />
+                                                )}
+                                            </div>
+                                        );
+                                    })}
+                                </div>
                             </div>
                             <p className="px-8 mt-4 text-[13px] text-gray-400 dark:text-gray-500 text-center leading-normal">Selecciona una categoría para ver los servicios legales disponibles en tu región.</p>
                         </div>
@@ -2071,76 +2140,83 @@ const IOSNavigationStack: React.FC<NavigationProps> = ({
                         }}
                         className="w-[50%] h-full shrink-0 overflow-y-auto no-scrollbar touch-pan-y"
                     >
-                        <div className="pb-8 pt-[86px]">
-                            {renderCategory && (() => {
-                            const grouped: Record<string, Service[]> = {};
-                            const sectionOrder: string[] = [];
-                            renderCategory.services.forEach(s => {
-                                const sec = s.section || 'General';
-                                if (!grouped[sec]) { grouped[sec] = []; sectionOrder.push(sec); }
-                                grouped[sec].push(s);
-                            });
-                            return sectionOrder.map((sectionName) => {
-                                const sectionServices = grouped[sectionName];
-                                const isSystemStoreSection = sectionName === 'Tienda del Sistema';
-                                return (
-                                    <div key={sectionName} className="mb-6 last:mb-0">
-                                        {sectionName !== 'General' && <div className="px-4 mb-2"><h3 className="text-[13px] text-gray-500 dark:text-gray-400 uppercase tracking-wide ml-4">{sectionName}</h3></div>}
-                                        <div className={`mx-4 bg-white dark:bg-[#2C2C2E]/70 ${isSystemStoreSection ? 'rounded-[20px]' : 'rounded-[12px]'} overflow-hidden ${isVueltaAnimation ? 'pointer-events-none' : ''}`}>
-                                            {sectionServices.map((service, idx) => {
-                                                const isPressed = pressedServiceId === service.name;
-                                                const isNextPressed = pressedServiceId === sectionServices[idx + 1]?.name;
-                                                const hideDivider = isPressed || isNextPressed;
+                        <div className="pb-8 pt-[86px] flex flex-col">
+                            <div>
+                                 {renderCategory && renderCategory.id !== 'games' && (
+                                     <div className="px-4 mb-2">
+                                         <h3 className="text-[13px] text-gray-500 dark:text-gray-400 uppercase tracking-wide ml-4">Servicios</h3>
+                                     </div>
+                                 )}
+                                {renderCategory && (() => {
+                                const grouped: Record<string, Service[]> = {};
+                                const sectionOrder: string[] = [];
+                                renderCategory.services.forEach(s => {
+                                    const sec = s.section || 'General';
+                                    if (!grouped[sec]) { grouped[sec] = []; sectionOrder.push(sec); }
+                                    grouped[sec].push(s);
+                                });
+                                return sectionOrder.map((sectionName) => {
+                                    const sectionServices = grouped[sectionName];
+                                    const isSystemStoreSection = sectionName === 'Tienda del Sistema';
+                                    return (
+                                        <div key={sectionName} className="mb-6 last:mb-0">
+                                            {sectionName !== 'General' && <div className="px-4 mb-2"><h3 className="text-[13px] text-gray-500 dark:text-gray-400 uppercase tracking-wide ml-4">{sectionName}</h3></div>}
+                                            <div className={`mx-4 bg-white dark:bg-[#2C2C2E]/70 ${isSystemStoreSection ? 'rounded-[20px]' : 'rounded-[12px]'} overflow-hidden ${isVueltaAnimation ? 'pointer-events-none' : ''}`}>
+                                                {sectionServices.map((service, idx) => {
+                                                    const isPressed = pressedServiceId === service.name;
+                                                    const isNextPressed = pressedServiceId === sectionServices[idx + 1]?.name;
+                                                    const hideDivider = isPressed || isNextPressed;
 
-                                                if (service.isSystemStore) {
-                                                    const storeData = getSystemStoreData();
-                                                    return (
-                                                        <SystemStoreRow 
-                                                            key={service.name}
-                                                            service={service}
-                                                            storeData={storeData}
-                                                            disabled={isVueltaAnimation}
-                                                            onServiceClick={(s) => {
-                                                                if (!hasSwipedRef.current) handleServiceClick(s);
-                                                            }}
-                                                            hideDivider={hideDivider}
-                                                            showDivider={idx < sectionServices.length - 1}
-                                                            scrollContainerRef={servicesRef}
-                                                            sliderRef={sliderRef}
-                                                        />
-                                                    );
-                                                }
-                                                return (
-                                                    <div key={service.name} className="relative">
-                                                        <ServiceListItem 
-                                                            service={service}
-                                                            icon={<div className={`w-7 h-7 rounded-[6px] flex items-center justify-center text-[12px] font-bold ${service.color}`}>{service.iconContent ? service.iconContent : (service.iconLabel || service.name[0])}</div>} 
-                                                            label={service.name} 
-                                                            onClick={() => {
-                                                                if (hasSwipedRef.current || isVueltaAnimation) return;
-                                                                handleServiceClick(service);
-                                                            }} 
-                                                            disabled={isVueltaAnimation}
-                                                            scrollContainerRef={servicesRef}
-                                                            sliderRef={sliderRef}
-                                                            onPressChange={(pressed) => setPressedServiceId(pressed ? service.name : null)}
-                                                            actionLabel={getActionLabel(service)} 
-                                                        />
-                                                        {idx < sectionServices.length - 1 && (
-                                                            <div 
-                                                                className="absolute bottom-0 left-[56px] right-0 h-[1px] bg-black/10 dark:bg-white/10 pointer-events-none" 
-                                                                style={{ opacity: hideDivider ? 0 : 1 }}
+                                                    if (service.isSystemStore) {
+                                                        const storeData = getSystemStoreData();
+                                                        return (
+                                                            <SystemStoreRow 
+                                                                key={service.name}
+                                                                service={service}
+                                                                storeData={storeData}
+                                                                disabled={isVueltaAnimation}
+                                                                onServiceClick={(s) => {
+                                                                    if (!hasSwipedRef.current) handleServiceClick(s);
+                                                                }}
+                                                                hideDivider={hideDivider}
+                                                                showDivider={idx < sectionServices.length - 1}
+                                                                scrollContainerRef={servicesRef}
+                                                                sliderRef={sliderRef}
                                                             />
-                                                        )}
-                                                    </div>
-                                                );
-                                            })}
+                                                        );
+                                                    }
+                                                    return (
+                                                        <div key={service.name} className="relative">
+                                                            <ServiceListItem 
+                                                                service={service}
+                                                                icon={<div className={`w-7 h-7 rounded-[6px] flex items-center justify-center text-[12px] font-bold ${service.color}`}>{service.iconContent ? service.iconContent : (service.iconLabel || service.name[0])}</div>} 
+                                                                label={service.name} 
+                                                                onClick={() => {
+                                                                    if (hasSwipedRef.current || isVueltaAnimation) return;
+                                                                    handleServiceClick(service);
+                                                                }} 
+                                                                disabled={isVueltaAnimation}
+                                                                scrollContainerRef={servicesRef}
+                                                                sliderRef={sliderRef}
+                                                                onPressChange={(pressed) => setPressedServiceId(pressed ? service.name : null)}
+                                                                actionLabel={getActionLabel(service)} 
+                                                            />
+                                                            {idx < sectionServices.length - 1 && (
+                                                                <div 
+                                                                    className="absolute bottom-0 left-[56px] right-0 h-[1px] bg-black/10 dark:bg-white/10 pointer-events-none" 
+                                                                    style={{ opacity: hideDivider ? 0 : 1 }}
+                                                                />
+                                                            )}
+                                                        </div>
+                                                    );
+                                                })}
+                                            </div>
                                         </div>
-                                    </div>
-                                );
-                            });
-                        })()}
-                         {renderCategory && <p className="px-8 mt-4 text-[13px] text-gray-400 dark:text-gray-500 text-center leading-normal">El acceso a estos sitios es seguro y apoya a los creadores de contenido.</p>}
+                                    );
+                                });
+                            })()}
+                            </div>
+                            {renderCategory && <p className="px-8 mt-4 text-[13px] text-gray-400 dark:text-gray-500 text-center leading-normal">El acceso a estos sitios es seguro y apoya a los creadores de contenido.</p>}
                         </div>
                     </div>
                 </div>
