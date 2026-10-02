@@ -465,12 +465,12 @@ export const RisksModal: React.FC<RisksModalProps> = ({ isOpen, onClose, isDarkM
               startTranslateXRef.current = currentTx - diffX;
 
               if (sliderRef.current) {
-                  sliderRef.current.style.transition = 'none';
+                  sliderRef.current.style.setProperty('transition', 'none', 'important');
                   sliderRef.current.style.transform = `translateX(${currentTx}px)`;
               }
 
               if (desktopModalRef.current && isDesktop) {
-                  desktopModalRef.current.style.transition = 'none';
+                  desktopModalRef.current.style.setProperty('transition', 'none', 'important');
               }
 
               try { (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId); } catch (err) {}
@@ -499,6 +499,7 @@ export const RisksModal: React.FC<RisksModalProps> = ({ isOpen, onClose, isDarkM
           if (desktopModalRef.current && isDesktop) {
               const ratio = Math.max(0, Math.min(1, -move / containerWidth));
               const interpolatedHeight = heightsRef.current.legal + (heightsRef.current.security - heightsRef.current.legal) * ratio;
+              desktopModalRef.current.style.setProperty('transition', 'none', 'important');
               desktopModalRef.current.style.height = `${interpolatedHeight}px`;
           }
       }
@@ -511,7 +512,7 @@ export const RisksModal: React.FC<RisksModalProps> = ({ isOpen, onClose, isDarkM
       
       // Solo actuar sobre el slider si el agarre se activó
       if (isSwipingRef.current === true && sliderRef.current) {
-          sliderRef.current.style.transition = TRANSITION_CLASSES;
+          sliderRef.current.style.setProperty('transition', TRANSITION_CLASSES, 'important');
           const containerWidth = sliderRef.current.offsetWidth / 2;
 
           let targetSegment: RiskType = activeSegment;
@@ -526,7 +527,7 @@ export const RisksModal: React.FC<RisksModalProps> = ({ isOpen, onClose, isDarkM
           }
 
           if (desktopModalRef.current && isDesktop) {
-              desktopModalRef.current.style.transition = 'height 800ms cubic-bezier(0.16, 1, 0.3, 1)';
+              desktopModalRef.current.style.setProperty('transition', 'height 800ms cubic-bezier(0.16, 1, 0.3, 1)', 'important');
               desktopModalRef.current.style.height = `${heightsRef.current[targetSegment]}px`; 
           }
 
