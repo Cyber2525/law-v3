@@ -44,7 +44,9 @@ export function DragControl<T extends string = string>({
   const secondOption = options[1] || { value: 'security' as T, label: 'Security' };
 
   const containerRef = useRef<HTMLDivElement>(null);
-  const [isDragging, setIsDragging] = useState(false);
+  const [isPressed, setIsPressed] = useState(false);
+  const [isSliding, setIsSliding] = useState(false);
+  const isSlidingRef = useRef(false);
   const [isPressingInactive, setIsPressingInactive] = useState<T | null>(null);
   const [dragOffset, setDragOffset] = useState(0);
 
@@ -52,12 +54,12 @@ export function DragControl<T extends string = string>({
   const initialOffset = useRef(0);
   const containerWidth = useRef(0);
 
-  // Sync dragOffset with currentActive when not dragging
+  // Sync dragOffset with currentActive when not pressing or sliding
   useEffect(() => {
-    if (!isDragging) {
+    if (!isPressed && !isSliding) {
       setDragOffset(currentActive === secondOption.value ? 100 : 0);
     }
-  }, [currentActive, isDragging, secondOption.value]);
+  }, [currentActive, isPressed, isSliding, secondOption.value]);
 
   const handleContainerPointerDown = (e: React.PointerEvent) => {
     if (!containerRef.current || disabled) return;
@@ -81,7 +83,9 @@ export function DragControl<T extends string = string>({
     if (!containerRef.current || disabled) return;
     e.stopPropagation();
 
-    setIsDragging(true);
+    setIsPressed(true);
+    isSlidingRef.current = false;
+    setIsSliding(false);
     startX.current = e.clientX;
     containerWidth.current = containerRef.current.offsetWidth;
     initialOffset.current = currentActive === secondOption.value ? 100 : 0;
@@ -90,11 +94,23 @@ export function DragControl<T extends string = string>({
   };
 
   const handlePillPointerMove = (e: React.PointerEvent) => {
-    if (!isDragging) return;
-    e.preventDefault();
+    if (!isPressed) return;
 
     const currentX = e.clientX;
     const deltaX = currentX - startX.current;
+
+    if (!isSlidingRef.current) {
+      if (Math.abs(deltaX) >= 7) {
+        isSlidingRef.current = true;
+        setIsSliding(true);
+        startX.current = currentX;
+        initialOffset.current = dragOffset;
+      } else {
+        return;
+      }
+    }
+
+    e.preventDefault();
     const slideWidth = containerWidth.current / 2;
 
     const deltaPercent = (deltaX / slideWidth) * 100;
@@ -105,20 +121,25 @@ export function DragControl<T extends string = string>({
   };
 
   const handlePillPointerUp = (e: React.PointerEvent) => {
-    if (!isDragging) return;
-    setIsDragging(false);
+    if (!isPressed) return;
+    const wasSliding = isSlidingRef.current;
+    setIsPressed(false);
+    isSlidingRef.current = false;
+    setIsSliding(false);
     try {
       (e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId);
     } catch {
       // ignore
     }
 
-    if (dragOffset > 50) {
-      onChange(secondOption.value);
-      setDragOffset(100);
-    } else {
-      onChange(firstOption.value);
-      setDragOffset(0);
+    if (wasSliding) {
+      if (dragOffset > 50) {
+        onChange(secondOption.value);
+        setDragOffset(100);
+      } else {
+        onChange(firstOption.value);
+        setDragOffset(0);
+      }
     }
   };
 
@@ -130,7 +151,7 @@ export function DragControl<T extends string = string>({
   const scaleTransition = `scale ${DURATION} ${BEZIER}`;
   const fadeTransition = `opacity 0.1s ease-out`;
 
-  const scaleFactor = isDragging ? 0.92 : 1;
+  const scaleFactor = isPressed ? 0.92 : 1;
 
   /**
    * GEOMETRÍA iOS EXTRA-REFINADA:
@@ -163,7 +184,7 @@ export function DragControl<T extends string = string>({
           translate: `${dragOffset}% 0`,
           scale: scaleFactor,
           transformOrigin: pillOrigin,
-          transition: isDragging
+          transition: isSliding
             ? `scale ${DURATION} ${BEZIER}`
             : `translate ${DURATION} ${BEZIER}, scale ${DURATION} ${BEZIER}, transform-origin ${DURATION} ${BEZIER}`,
         }}
@@ -176,7 +197,7 @@ export function DragControl<T extends string = string>({
         aria-selected={currentActive === firstOption.value}
         className="flex-1 z-30 flex items-center justify-center pointer-events-none transform-gpu"
         style={{
-          scale: isDragging && isFirstSide ? scaleFactor : 1,
+          scale: isPressed && isFirstSide ? scaleFactor : 1,
           transformOrigin: '24px center',
           opacity: isPressingInactive === firstOption.value ? 0.6 : 1,
           transition: `${scaleTransition}, ${fadeTransition}`,
@@ -198,7 +219,7 @@ export function DragControl<T extends string = string>({
         aria-selected={currentActive === secondOption.value}
         className="flex-1 z-30 flex items-center justify-center pointer-events-none transform-gpu"
         style={{
-          scale: isDragging && isSecondSide ? scaleFactor : 1,
+          scale: isPressed && isSecondSide ? scaleFactor : 1,
           transformOrigin: 'calc(100% - 24px) center',
           opacity: isPressingInactive === secondOption.value ? 0.6 : 1,
           transition: `${scaleTransition}, ${fadeTransition}`,
