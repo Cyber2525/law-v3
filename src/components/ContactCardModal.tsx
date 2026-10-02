@@ -225,7 +225,7 @@ export const ContactCardModal: React.FC<ContactCardModalProps> = ({ isOpen, onCl
             ref={webBtn.buttonRef}
             {...webBtn.handlers}
             className={`flex-1 rounded-[12px] pt-[15px] pb-[6px] flex flex-col items-center justify-between min-h-[78px] transition-colors duration-300 outline-none touch-none select-none cursor-pointer gpu-accelerated ${
-              webBtn.isActive ? 'bg-[#e5e5ea] dark:bg-[#3a3a3c]' : 'bg-white dark:bg-[#2c2c2e]'
+              webBtn.isActive ? 'bg-[#e5e5ea] dark:bg-[#3a3a3c]' : 'bg-white dark:bg-[#242426]'
             }`}
             style={webBtn.style}
           >
@@ -236,7 +236,7 @@ export const ContactCardModal: React.FC<ContactCardModalProps> = ({ isOpen, onCl
             ref={callBtn.buttonRef}
             {...callBtn.handlers}
             className={`flex-1 rounded-[12px] pt-[15px] pb-[6px] flex flex-col items-center justify-between min-h-[78px] transition-colors duration-300 outline-none touch-none select-none cursor-pointer gpu-accelerated ${
-              callBtn.isActive ? 'bg-[#e5e5ea] dark:bg-[#3a3a3c]' : 'bg-white dark:bg-[#2c2c2e]'
+              callBtn.isActive ? 'bg-[#e5e5ea] dark:bg-[#3a3a3c]' : 'bg-white dark:bg-[#242426]'
             }`}
             style={callBtn.style}
           >
@@ -247,7 +247,7 @@ export const ContactCardModal: React.FC<ContactCardModalProps> = ({ isOpen, onCl
             ref={mapBtn.buttonRef}
             {...mapBtn.handlers}
             className={`flex-1 rounded-[12px] pt-[15px] pb-[6px] flex flex-col items-center justify-between min-h-[78px] transition-colors duration-300 outline-none touch-none select-none cursor-pointer gpu-accelerated ${
-              mapBtn.isActive ? 'bg-[#e5e5ea] dark:bg-[#3a3a3c]' : 'bg-white dark:bg-[#2c2c2e]'
+              mapBtn.isActive ? 'bg-[#e5e5ea] dark:bg-[#3a3a3c]' : 'bg-white dark:bg-[#242426]'
             }`}
             style={mapBtn.style}
           >
@@ -260,7 +260,7 @@ export const ContactCardModal: React.FC<ContactCardModalProps> = ({ isOpen, onCl
           ref={articleBtn.buttonRef}
           {...articleBtn.handlers}
           className={`w-full rounded-[12px] pl-4 pr-3 py-[12px] flex items-center justify-between transition-colors duration-300 outline-none touch-none select-none cursor-pointer gpu-accelerated ${
-            articleBtn.isActive ? 'bg-[#e5e5ea] dark:bg-[#3a3a3c]' : 'bg-white dark:bg-[#2c2c2e]'
+            articleBtn.isActive ? 'bg-[#e5e5ea] dark:bg-[#3a3a3c]' : 'bg-white dark:bg-[#242426]'
           }`}
           style={articleBtn.style}
         >
