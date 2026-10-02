@@ -4,26 +4,7 @@ import * as Dialog from '@radix-ui/react-dialog';
 import { Link, Phone, MapPin, Newspaper, X, MessageCircle, Video, Info } from 'lucide-react';
 // @ts-ignore
 import ministerioLogo from './Ministerio-de-Cultura.png';
-
-function useMediaQuery(query: string) {
-  const [value, setValue] = React.useState(() => {
-    if (typeof window !== 'undefined') {
-      return window.matchMedia(query).matches;
-    }
-    return false;
-  });
-
-  React.useEffect(() => {
-    function onChange(event: MediaQueryListEvent) {
-      setValue(event.matches);
-    }
-    const result = matchMedia(query);
-    result.addEventListener("change", onChange);
-    setValue(result.matches);
-    return () => result.removeEventListener("change", onChange);
-  }, [query]);
-  return value;
-}
+import { useMediaQuery, DESKTOP_MEDIA_QUERY } from './src/hooks/useMediaQuery';
 
 interface MinisterioBottomSheetProps {
   isOpen: boolean;
@@ -31,7 +12,7 @@ interface MinisterioBottomSheetProps {
 }
 
 export const MinisterioBottomSheet: React.FC<MinisterioBottomSheetProps> = ({ isOpen, onClose }) => {
-  const isDesktop = useMediaQuery('(min-width: 600px) and (min-height: 600px)');
+  const isDesktop = useMediaQuery(DESKTOP_MEDIA_QUERY);
   const [isDismissable, setIsDismissable] = useState(false);
 
   // Custom Close Button states and handlers (matching Back Button physics)
@@ -122,17 +103,12 @@ export const MinisterioBottomSheet: React.FC<MinisterioBottomSheetProps> = ({ is
     }
   }, [isOpen]);
 
-  const handleDrag = (e: React.PointerEvent<HTMLDivElement>, percentageDragged: number) => {
-    const progress = Math.max(0, Math.min(1, 1 - percentageDragged));
-    document.documentElement.setAttribute('data-drawer-dragging', 'true');
-    document.documentElement.style.setProperty('--drawer-transition-duration', '0s');
-    document.documentElement.style.setProperty('--drawer-progress', progress.toString());
+  const handleDrag = () => {
+    // Resizing background animation is disabled for contact card
   };
 
-  const handleRelease = (e: React.PointerEvent<HTMLDivElement>, open: boolean) => {
-    document.documentElement.removeAttribute('data-drawer-dragging');
-    document.documentElement.style.setProperty('--drawer-transition-duration', '0.8s');
-    document.documentElement.style.setProperty('--drawer-progress', open ? '1' : '0');
+  const handleRelease = () => {
+    // Resizing background animation is disabled for contact card
   };
 
   const handleWeb = () => {
@@ -165,8 +141,13 @@ export const MinisterioBottomSheet: React.FC<MinisterioBottomSheetProps> = ({ is
   };
 
   const contentJSX = (
-    <div className="flex flex-col relative w-full rounded-t-[13px] md:rounded-[16px] overflow-hidden bg-[#f2f2f7] dark:bg-[#1c1c1e] md:bg-[#f2f2f7]/70 md:dark:bg-[#1c1c1e]/70 landscape:bg-[#f2f2f7]/70 landscape:dark:bg-[#1c1c1e]/70">
-      <div className="absolute inset-0 backdrop-blur-xl -z-10 hidden md:block" />
+    <div className={`flex flex-col relative w-full rounded-t-[13px] md:rounded-[16px] overflow-hidden ${isDesktop ? 'bg-transparent' : 'bg-[#f2f2f7] dark:bg-[#1c1c1e]'}`}>
+      {isDesktop && (
+        <div 
+          className="absolute inset-0 backdrop-blur-xl -z-10 pointer-events-none" 
+          style={{ backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)' }}
+        />
+      )}
       
       {/* Botón X con estilo RisksModal */}
       <button 
@@ -230,7 +211,7 @@ export const MinisterioBottomSheet: React.FC<MinisterioBottomSheetProps> = ({ is
           onClick={onClose}
         />
         <div 
-          className={`relative w-[480px] max-h-[85vh] flex flex-col overflow-hidden isolation-isolate bg-[#f2f2f7]/70 dark:bg-[#1c1c1e]/70 rounded-[16px] shadow-2xl transform transition-all duration-[800ms] ease-[cubic-bezier(0.32,0.72,0,1)] ${isOpen ? 'translate-y-0' : 'translate-y-[100vh]'}`}
+          className={`relative w-[480px] max-w-[calc(100vw-32px)] max-h-[85vh] flex flex-col overflow-hidden isolation-isolate bg-[#f2f2f7]/70 dark:bg-[#1c1c1e]/70 rounded-[16px] shadow-2xl transform transition-all duration-[800ms] ease-[cubic-bezier(0.32,0.72,0,1)] ${isOpen ? 'translate-y-0' : 'translate-y-[100vh]'}`}
         >
           {contentJSX}
         </div>

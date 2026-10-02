@@ -3,155 +3,133 @@ import { Link, Phone, MapPin, Newspaper, X, MessageCircle, Video, Info } from 'l
 import config from '../config.json';
 import { DesktopModal } from './ui/DesktopModal';
 import { BottomSheet } from './ui/BottomSheet';
-
-function useMediaQuery(query: string) {
-  const [value, setValue] = React.useState(() => {
-    if (typeof window !== 'undefined') {
-      return window.matchMedia(query).matches;
-    }
-    return false;
-  });
-
-  React.useEffect(() => {
-    function onChange(event: MediaQueryListEvent) {
-      setValue(event.matches);
-    }
-    const result = matchMedia(query);
-    result.addEventListener("change", onChange);
-    setValue(result.matches);
-    return () => result.removeEventListener("change", onChange);
-  }, [query]);
-  return value;
-}
+import { useMediaQuery, DESKTOP_MEDIA_QUERY } from '../hooks/useMediaQuery';
 
 interface ContactCardModalProps {
   isOpen: boolean;
   onClose: () => void;
 }
 
-export const ContactCardModal: React.FC<ContactCardModalProps> = ({ isOpen, onClose }) => {
-  const isDesktop = useMediaQuery('(min-width: 600px) and (min-height: 600px)');
-  const [isDismissable, setIsDismissable] = useState(false);
+// Hook to provide exact iOS button press physics (with cursor-out cancellation & re-entry) matching Button X
+function useIOSButtonPress(onTrigger?: () => void) {
+  const [isActive, setIsActive] = useState(false);
+  const [isReentry, setIsReentry] = useState(false);
+  const buttonRef = React.useRef<HTMLButtonElement>(null);
+  const isPointerDown = React.useRef(false);
+  const hasExitedRef = React.useRef(false);
+  const lastDistRef = React.useRef(0);
 
-  // Custom Close Button states and handlers (matching Back Button physics)
-  const [isCloseActive, setIsCloseActive] = useState(false);
-  const [isCloseReentry, setIsCloseReentry] = useState(false);
-  const closeButtonRef = React.useRef<HTMLButtonElement>(null);
-  const isPointerDownOnClose = React.useRef(false);
-  const hasExitedCloseRef = React.useRef(false);
-  const lastCloseDistRef = React.useRef(0);
+  const handlePointerDown = (e: React.PointerEvent<HTMLButtonElement>) => {
+    e.stopPropagation();
+    if (e.button !== 0) return;
 
-  const handleClosePointerDown = (e: React.PointerEvent<HTMLButtonElement>) => {
-      e.stopPropagation();
-      if (e.button !== 0) return;
+    isPointerDown.current = true;
+    setIsReentry(false);
+    setIsActive(true);
+    hasExitedRef.current = false;
+    lastDistRef.current = 0;
 
-      isPointerDownOnClose.current = true;
-      setIsCloseReentry(false);
-      setIsCloseActive(true);
-      hasExitedCloseRef.current = false;
-      lastCloseDistRef.current = 0;
-
-      try {
-          e.currentTarget.setPointerCapture(e.pointerId);
-      } catch (err) {}
+    try {
+      e.currentTarget.setPointerCapture(e.pointerId);
+    } catch (err) {}
   };
 
-  const handleClosePointerMove = (e: React.PointerEvent<HTMLButtonElement>) => {
-      if (!isPointerDownOnClose.current) return;
-      e.stopPropagation();
+  const handlePointerMove = (e: React.PointerEvent<HTMLButtonElement>) => {
+    if (!isPointerDown.current) return;
+    e.stopPropagation();
 
-      if (!closeButtonRef.current) return;
-      const rect = closeButtonRef.current.getBoundingClientRect();
-      const extraMargin = 50;
-      const dx = Math.max(rect.left - e.clientX, 0, e.clientX - rect.right);
-      const dy = Math.max(rect.top - e.clientY, 0, e.clientY - rect.bottom);
-      const dist = Math.max(dx, dy);
+    if (!buttonRef.current) return;
+    const rect = buttonRef.current.getBoundingClientRect();
+    const extraMargin = 50;
+    const dx = Math.max(rect.left - e.clientX, 0, e.clientX - rect.right);
+    const dy = Math.max(rect.top - e.clientY, 0, e.clientY - rect.bottom);
+    const dist = Math.max(dx, dy);
 
-      if (dist === 0) {
-          hasExitedCloseRef.current = false;
-          lastCloseDistRef.current = 0;
-          if (!isCloseActive) {
-              setIsCloseReentry(true);
-              setIsCloseActive(true);
-          }
-      } else {
-          const prevDist = lastCloseDistRef.current;
-          lastCloseDistRef.current = dist;
-
-          if (!hasExitedCloseRef.current) {
-              hasExitedCloseRef.current = true;
-              if (isCloseActive) {
-                  setIsCloseActive(false);
-              }
-          } else {
-              if (dist < prevDist - 0.5) {
-                  if (dist <= extraMargin) {
-                      if (!isCloseActive) {
-                          setIsCloseReentry(true);
-                          setIsCloseActive(true);
-                      }
-                  }
-              } else if (dist > prevDist + 0.5) {
-                  if (isCloseActive) {
-                      setIsCloseActive(false);
-                  }
-              }
-          }
+    if (dist === 0) {
+      hasExitedRef.current = false;
+      lastDistRef.current = 0;
+      if (!isActive) {
+        setIsReentry(true);
+        setIsActive(true);
       }
-  };
+    } else {
+      const prevDist = lastDistRef.current;
+      lastDistRef.current = dist;
 
-  const handleClosePointerUp = (e: React.PointerEvent<HTMLButtonElement>) => {
-      e.stopPropagation();
-      try {
-          e.currentTarget.releasePointerCapture(e.pointerId);
-      } catch (err) {}
-
-      if (!isPointerDownOnClose.current) return;
-      isPointerDownOnClose.current = false;
-
-      const wasActive = isCloseActive;
-
-      if (wasActive) {
-          onClose();
-          setTimeout(() => {
-              setIsCloseActive(false);
-              setIsCloseReentry(false);
-          }, 300);
+      if (!hasExitedRef.current) {
+        hasExitedRef.current = true;
+        if (isActive) {
+          setIsActive(false);
+        }
       } else {
-          setIsCloseActive(false);
-          setIsCloseReentry(false);
+        if (dist < prevDist - 0.5) {
+          if (dist <= extraMargin) {
+            if (!isActive) {
+              setIsReentry(true);
+              setIsActive(true);
+            }
+          }
+        } else if (dist > prevDist + 0.5) {
+          if (isActive) {
+            setIsActive(false);
+          }
+        }
       }
-  };
-
-  const handleClosePointerCancel = (e: React.PointerEvent<HTMLButtonElement>) => {
-      e.stopPropagation();
-      try {
-          e.currentTarget.releasePointerCapture(e.pointerId);
-      } catch (err) {}
-      isPointerDownOnClose.current = false;
-      setIsCloseActive(false);
-      setIsCloseReentry(false);
-  };
-
-  useEffect(() => {
-    if (isOpen) {
-      setIsDismissable(false);
-      const timer = setTimeout(() => {
-        setIsDismissable(true);
-      }, 500);
-      return () => clearTimeout(timer);
     }
-  }, [isOpen]);
-
-  const handleDrag = (e: React.PointerEvent<HTMLDivElement>, percentageDragged: number) => {
-    document.documentElement.setAttribute('data-drawer-dragging', 'true');
-    document.documentElement.style.setProperty('--drawer-transition-duration', '0s');
   };
 
-  const handleRelease = (e: React.PointerEvent<HTMLDivElement>, open: boolean) => {
-    document.documentElement.removeAttribute('data-drawer-dragging');
-    document.documentElement.style.setProperty('--drawer-transition-duration', '0.8s');
+  const handlePointerUp = (e: React.PointerEvent<HTMLButtonElement>) => {
+    e.stopPropagation();
+    try {
+      e.currentTarget.releasePointerCapture(e.pointerId);
+    } catch (err) {}
+
+    if (!isPointerDown.current) return;
+    isPointerDown.current = false;
+
+    const wasActive = isActive;
+
+    if (wasActive) {
+      if (onTrigger) onTrigger();
+      setTimeout(() => {
+        setIsActive(false);
+        setIsReentry(false);
+      }, 300);
+    } else {
+      setIsActive(false);
+      setIsReentry(false);
+    }
   };
+
+  const handlePointerCancel = (e: React.PointerEvent<HTMLButtonElement>) => {
+    e.stopPropagation();
+    try {
+      e.currentTarget.releasePointerCapture(e.pointerId);
+    } catch (err) {}
+    isPointerDown.current = false;
+    setIsActive(false);
+    setIsReentry(false);
+  };
+
+  return {
+    isActive,
+    isReentry,
+    buttonRef,
+    handlers: {
+      onPointerDown: handlePointerDown,
+      onPointerMove: handlePointerMove,
+      onPointerUp: handlePointerUp,
+      onPointerCancel: handlePointerCancel,
+    },
+    style: {
+      transitionDuration: (!isActive || isReentry) ? '300ms' : '0ms'
+    }
+  };
+}
+
+export const ContactCardModal: React.FC<ContactCardModalProps> = ({ isOpen, onClose }) => {
+  const isDesktop = useMediaQuery(DESKTOP_MEDIA_QUERY);
+  const [isDismissable, setIsDismissable] = useState(false);
 
   const handleWeb = () => {
     window.open(config.contactCard.webUrl, '_blank', 'noopener,noreferrer');
@@ -182,23 +160,48 @@ export const ContactCardModal: React.FC<ContactCardModalProps> = ({ isOpen, onCl
     window.open(config.contactCard.articleUrl, '_blank', 'noopener,noreferrer');
   };
 
+  // Button tracking hooks with the exact cursor-out physics as button X
+  const closeBtn = useIOSButtonPress(onClose);
+  const webBtn = useIOSButtonPress(handleWeb);
+  const callBtn = useIOSButtonPress(handleCall);
+  const mapBtn = useIOSButtonPress(handleMap);
+  const articleBtn = useIOSButtonPress(handleArticle);
+
+  useEffect(() => {
+    if (isOpen) {
+      setIsDismissable(false);
+      const timer = setTimeout(() => {
+        setIsDismissable(true);
+      }, 500);
+      return () => clearTimeout(timer);
+    }
+  }, [isOpen]);
+
+  const handleDrag = () => {
+    // Resizing background animation is disabled for contact card
+  };
+
+  const handleRelease = () => {
+    // Resizing background animation is disabled for contact card
+  };
+
   const contentJSX = (
-    <div className="flex flex-col relative w-full rounded-t-[13px] md:rounded-[16px] overflow-hidden bg-[#f2f2f7] dark:bg-[#1c1c1e] md:bg-[#f2f2f7]/70 md:dark:bg-[#1c1c1e]/70 landscape:bg-[#f2f2f7]/70 landscape:dark:bg-[#1c1c1e]/70">
-      <div className="absolute inset-0 backdrop-blur-xl -z-10 hidden md:block" />
+    <div className={`flex flex-col relative w-full rounded-t-[13px] md:rounded-[16px] overflow-hidden ${isDesktop ? 'bg-transparent' : 'bg-[#f2f2f7] dark:bg-[#1c1c1e]'}`}>
+      {isDesktop && (
+        <div 
+          className="absolute inset-0 backdrop-blur-xl -z-10 pointer-events-none" 
+          style={{ backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)' }}
+        />
+      )}
       
       {/* Botón X con estilo RisksModal */}
       <button 
-        ref={closeButtonRef}
-        onPointerDown={handleClosePointerDown}
-        onPointerMove={handleClosePointerMove}
-        onPointerUp={handleClosePointerUp}
-        onPointerCancel={handleClosePointerCancel}
+        ref={closeBtn.buttonRef}
+        {...closeBtn.handlers}
         className={`absolute right-4 top-4 w-10 h-10 bg-[#767680]/15 dark:bg-black/20 backdrop-blur-xl rounded-full flex items-center justify-center text-gray-500 dark:text-gray-400 outline-none touch-none pointer-events-auto cursor-pointer z-50 transition-opacity duration-300 gpu-accelerated ${
-            isCloseActive ? 'opacity-30' : 'opacity-100'
+            closeBtn.isActive ? 'opacity-30' : 'opacity-100'
         }`}
-        style={{
-            transitionDuration: (!isCloseActive || isCloseReentry) ? '300ms' : '0ms'
-        }}
+        style={closeBtn.style}
         aria-label="Cerrar"
       >
         <X className="w-6 h-6" strokeWidth={2.5} />
@@ -218,21 +221,49 @@ export const ContactCardModal: React.FC<ContactCardModalProps> = ({ isOpen, onCl
 
       <div className="px-4 pb-4 flex flex-col gap-3">
         <div className="flex justify-center gap-3">
-          <button onClick={handleWeb} className="flex-1 bg-white dark:bg-[#2c2c2e] rounded-[12px] pt-[15px] pb-[6px] flex flex-col items-center justify-between min-h-[78px] active:bg-[#e5e5ea] dark:active:bg-[#3a3a3c] transition-colors">
+          <button 
+            ref={webBtn.buttonRef}
+            {...webBtn.handlers}
+            className={`flex-1 rounded-[12px] pt-[15px] pb-[6px] flex flex-col items-center justify-between min-h-[78px] transition-colors duration-300 outline-none touch-none select-none cursor-pointer gpu-accelerated ${
+              webBtn.isActive ? 'bg-[#e5e5ea] dark:bg-[#3a3a3c]' : 'bg-white dark:bg-[#2c2c2e]'
+            }`}
+            style={webBtn.style}
+          >
             <Link className="w-[26px] h-[26px] text-black dark:text-white" strokeWidth={1.5} />
             <span className="text-[17px] text-black dark:text-white font-medium">Web</span>
           </button>
-          <button onClick={handleCall} className="flex-1 bg-white dark:bg-[#2c2c2e] rounded-[12px] pt-[15px] pb-[6px] flex flex-col items-center justify-between min-h-[78px] active:bg-[#e5e5ea] dark:active:bg-[#3a3a3c] transition-colors">
+          <button 
+            ref={callBtn.buttonRef}
+            {...callBtn.handlers}
+            className={`flex-1 rounded-[12px] pt-[15px] pb-[6px] flex flex-col items-center justify-between min-h-[78px] transition-colors duration-300 outline-none touch-none select-none cursor-pointer gpu-accelerated ${
+              callBtn.isActive ? 'bg-[#e5e5ea] dark:bg-[#3a3a3c]' : 'bg-white dark:bg-[#2c2c2e]'
+            }`}
+            style={callBtn.style}
+          >
             <Phone className="w-[26px] h-[26px] text-black dark:text-white" strokeWidth={1.5} />
             <span className="text-[17px] text-black dark:text-white font-medium">Llamar</span>
           </button>
-          <button onClick={handleMap} className="flex-1 bg-white dark:bg-[#2c2c2e] rounded-[12px] pt-[15px] pb-[6px] flex flex-col items-center justify-between min-h-[78px] active:bg-[#e5e5ea] dark:active:bg-[#3a3a3c] transition-colors">
+          <button 
+            ref={mapBtn.buttonRef}
+            {...mapBtn.handlers}
+            className={`flex-1 rounded-[12px] pt-[15px] pb-[6px] flex flex-col items-center justify-between min-h-[78px] transition-colors duration-300 outline-none touch-none select-none cursor-pointer gpu-accelerated ${
+              mapBtn.isActive ? 'bg-[#e5e5ea] dark:bg-[#3a3a3c]' : 'bg-white dark:bg-[#2c2c2e]'
+            }`}
+            style={mapBtn.style}
+          >
             <MapPin className="w-[26px] h-[26px] text-black dark:text-white" strokeWidth={1.5} />
             <span className="text-[17px] text-black dark:text-white font-medium">Dirección</span>
           </button>
         </div>
 
-        <button onClick={handleArticle} className="w-full bg-white dark:bg-[#2c2c2e] rounded-[12px] pl-4 pr-3 py-[12px] flex items-center justify-between active:bg-[#e5e5ea] dark:active:bg-[#3a3a3c] transition-colors">
+        <button 
+          ref={articleBtn.buttonRef}
+          {...articleBtn.handlers}
+          className={`w-full rounded-[12px] pl-4 pr-3 py-[12px] flex items-center justify-between transition-colors duration-300 outline-none touch-none select-none cursor-pointer gpu-accelerated ${
+            articleBtn.isActive ? 'bg-[#e5e5ea] dark:bg-[#3a3a3c]' : 'bg-white dark:bg-[#2c2c2e]'
+          }`}
+          style={articleBtn.style}
+        >
           <span className="text-black dark:text-white text-[18px] font-medium">{config.contactCard.articleButtonText}</span>
           <Info className="w-[26px] h-[26px] text-black dark:text-white" strokeWidth={1.5} />
         </button>

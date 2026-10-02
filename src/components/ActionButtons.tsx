@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion } from 'motion/react';
 import { ArrowLeft, PlayCircle, ExternalLink } from 'lucide-react';
 import { ContactCardModal } from './ContactCardModal';
@@ -7,9 +7,12 @@ import config from '../config.json';
 
 interface ActionButtonsProps {
   onOpenStreaming: () => void;
+  onOpenMinisterio?: () => void;
   onEnableDebug?: () => void;
+  onGoBack?: () => void;
   isStreamingOpen?: boolean;
   isRisksOpen?: boolean;
+  isMinisterioOpen?: boolean;
   isStreamingCooldown?: boolean;
   isRisksCooldown?: boolean;
   isDarkMode?: boolean;
@@ -17,9 +20,12 @@ interface ActionButtonsProps {
 
 export const ActionButtons: React.FC<ActionButtonsProps> = ({ 
   onOpenStreaming, 
+  onOpenMinisterio,
   onEnableDebug,
+  onGoBack,
   isStreamingOpen = false,
   isRisksOpen = false,
+  isMinisterioOpen = false,
   isStreamingCooldown = false,
   isRisksCooldown = false,
   isDarkMode = false
@@ -28,6 +34,7 @@ export const ActionButtons: React.FC<ActionButtonsProps> = ({
 
   // --- History Management for Alert ---
   useEffect(() => {
+    if (onOpenMinisterio) return;
     const handlePopState = (e: PopStateEvent) => {
         if (!e.state?.externalAlert) {
             setIsBottomSheetOpen(false);
@@ -35,9 +42,13 @@ export const ActionButtons: React.FC<ActionButtonsProps> = ({
     };
     window.addEventListener('popstate', handlePopState);
     return () => window.removeEventListener('popstate', handlePopState);
-  }, []);
+  }, [onOpenMinisterio]);
 
   const openAlert = () => {
+      if (onOpenMinisterio) {
+          onOpenMinisterio();
+          return;
+      }
       window.history.pushState({ ...window.history.state, externalAlert: true }, '');
       setIsBottomSheetOpen(true);
   };
@@ -53,19 +64,59 @@ export const ActionButtons: React.FC<ActionButtonsProps> = ({
 
   // El botón azul (alternativas legales) es gris SOLO si el modal de streaming está abierto O en cooldown de streaming
   const isStreamingInactive = isStreamingOpen || isStreamingCooldown;
-  // El link externo solo se bloquea si el modal de streaming está abierto
-  const isLinkInactive = isStreamingOpen;
+  // El link externo solo se bloquea si algún modal está abierto
+  const isLinkInactive = isStreamingOpen || isRisksOpen || isMinisterioOpen;
 
-  // --- Button 1: Volver atrás (navega a un New Tab en vez de Google/Chrome) ---
-  const backButtonTracking = usePressTracking({
-    onTrigger: () => {
+  // --- Button 1: Volver atrás (regresa al origen/inicio nativo sin imponer buscadores comerciales ni violar leyes antimonopolio) ---
+  const lastBackTriggerRef = useRef(0);
+
+  const handleBackAction = () => {
+    const now = Date.now();
+    if (now - lastBackTriggerRef.current < 500) return;
+    lastBackTriggerRef.current = now;
+
+    // 1. Si la pestaña tiene historial de navegación, retroceder al origen nativo (la página de inicio/Nueva Pestaña o búsqueda del usuario).
+    // Esto preserva la página configurada por el usuario en su navegador sin favorecer a ningún buscador privado.
+    if (typeof window !== 'undefined' && window.history && window.history.length > 1) {
+      window.history.back();
+      return;
+    }
+
+    // 2. Intentar cerrar la pestaña si fue abierta como ventana emergente o por script
+    try {
+      window.open('', '_self');
+      window.close();
+    } catch (_) {}
+
+    try {
+      window.close();
+    } catch (_) {}
+
+    // 3. Si no hay historial ni el navegador permite cerrar por script:
+    // Volver al referrer externo si existe, o al portal institucional público del Ministerio (100% neutral y legal)
+    setTimeout(() => {
       try {
         window.close();
-      } catch (e) {
-        // Ignorar si el navegador bloquea window.close()
+      } catch (_) {}
+
+      if (typeof document !== 'undefined' && document.referrer && !document.referrer.includes(window.location.host)) {
+        try {
+          window.location.replace(document.referrer);
+          return;
+        } catch (_) {}
       }
-      window.location.href = 'about:blank';
-    }
+
+      const institutionalUrl = config.contactCard?.webUrl || 'https://www.cultura.gob.es/';
+      try {
+        window.location.replace(institutionalUrl);
+      } catch (_) {
+        window.location.href = institutionalUrl;
+      }
+    }, 150);
+  };
+
+  const backButtonTracking = usePressTracking({
+    onTrigger: handleBackAction
   });
 
   // --- Button 2: alternativas legales ---
@@ -91,6 +142,7 @@ export const ActionButtons: React.FC<ActionButtonsProps> = ({
           <motion.button 
             ref={backButtonTracking.buttonRef}
             {...backButtonTracking.pointerEvents}
+            onClick={handleBackAction}
             animate={backButtonTracking.isPressed ? { scale: 0.92 } : { scale: 1 }}
             transition={{ type: 'spring', stiffness: 600, damping: 30 }}
             style={{ willChange: 'transform, background-color, border-color, color' }}
@@ -145,10 +197,12 @@ export const ActionButtons: React.FC<ActionButtonsProps> = ({
         </div>
       </div>
 
-      <ContactCardModal 
-        isOpen={isBottomSheetOpen}
-        onClose={closeAlert}
-      />
+      {!onOpenMinisterio && (
+        <ContactCardModal 
+          isOpen={isBottomSheetOpen}
+          onClose={closeAlert}
+        />
+      )}
     </>
   );
 };

@@ -38,7 +38,7 @@ body {
 }
 
 /* Custom Vaul background scaling to match iOS perfectly, synchronized dynamically */
-@media (orientation: portrait) {
+@media (orientation: portrait) and (max-width: 524.98px) {
   [vaul-drawer-wrapper] {
     /* iPhone-like starting rounded corners (0px), transitioning to 13px when scaled */
     /* Only top corners are rounded, bottom corners stay at 0 */
@@ -50,7 +50,7 @@ body {
   }
 }
 
-@media (orientation: landscape) {
+@media (orientation: landscape), (min-width: 525px) and (min-height: 525px) {
   [vaul-drawer-wrapper] {
     border-radius: 0 !important;
     transform: none !important;

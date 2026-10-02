@@ -1,4 +1,22 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
+
+function getCurrentTranslateX(element: HTMLElement | null): number {
+  if (!element) return 0;
+  const style = window.getComputedStyle(element);
+  const transform = style.transform || (style as any).webkitTransform;
+  if (!transform || transform === 'none') return 0;
+  const mat = transform.match(/^matrix\((.+)\)$/);
+  if (mat) {
+    const values = mat[1].split(',');
+    return parseFloat(values[4]?.trim() || '0') || 0;
+  }
+  const mat3d = transform.match(/^matrix3d\((.+)\)$/);
+  if (mat3d) {
+    const values = mat3d[1].split(',');
+    return parseFloat(values[12]?.trim() || '0') || 0;
+  }
+  return 0;
+}
 
 interface UsePressTrackingOptions {
   disabled?: boolean;
@@ -8,6 +26,9 @@ interface UsePressTrackingOptions {
     durationMs: number;
   };
   extraMargin?: number;
+  sliderRef?: React.RefObject<HTMLElement | null>;
+  scrollContainerRef?: React.RefObject<HTMLElement | null>;
+  onPressChange?: (pressed: boolean) => void;
 }
 
 export function usePressTracking({
@@ -15,15 +36,40 @@ export function usePressTracking({
   onTrigger,
   onLongPress,
   extraMargin = 50,
+  sliderRef,
+  scrollContainerRef,
+  onPressChange,
 }: UsePressTrackingOptions = {}) {
   const [isPressed, setIsPressed] = useState(false);
   const [isReentry, setIsReentry] = useState(false);
   const isPointerDown = useRef(false);
+  const activePointerIdRef = useRef<number | null>(null);
   const buttonRef = useRef<any>(null);
   const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isLongPressActive = useRef(false);
   const hasExitedRef = useRef(false);
   const lastDistRef = useRef(0);
+  const touchStartXRef = useRef(0);
+  const touchStartYRef = useRef(0);
+  const initialSliderTxRef = useRef(0);
+  const initialScrollTopRef = useRef(0);
+
+  const cancelPress = useCallback(() => {
+    isPointerDown.current = false;
+    setIsPressed(false);
+    setIsReentry(false);
+    isLongPressActive.current = false;
+    if (longPressTimerRef.current) {
+      clearTimeout(longPressTimerRef.current);
+      longPressTimerRef.current = null;
+    }
+    onPressChange?.(false);
+    if (buttonRef.current && activePointerIdRef.current !== null) {
+      try {
+        buttonRef.current.releasePointerCapture(activePointerIdRef.current);
+      } catch (_) {}
+    }
+  }, [onPressChange]);
 
   // Clean up timer on unmount
   useEffect(() => {
@@ -34,6 +80,14 @@ export function usePressTracking({
     };
   }, []);
 
+  // When disabled changes to true: immediately cancel and reset press state
+  // to allow smooth transition back to unpressed state ("volver a su color con su transicion")
+  useEffect(() => {
+    if (disabled && (isPressed || isPointerDown.current)) {
+      cancelPress();
+    }
+  }, [disabled, isPressed, cancelPress]);
+
   const handlePointerDown = (e: React.PointerEvent) => {
     if (disabled) return;
     
@@ -41,11 +95,22 @@ export function usePressTracking({
     if (e.button !== 0) return;
 
     isPointerDown.current = true;
+    activePointerIdRef.current = e.pointerId;
+    touchStartXRef.current = e.clientX;
+    touchStartYRef.current = e.clientY;
     setIsReentry(false);
     setIsPressed(true);
+    onPressChange?.(true);
     isLongPressActive.current = false;
     hasExitedRef.current = false;
     lastDistRef.current = 0;
+
+    if (sliderRef?.current) {
+      initialSliderTxRef.current = getCurrentTranslateX(sliderRef.current);
+    }
+    if (scrollContainerRef?.current) {
+      initialScrollTopRef.current = scrollContainerRef.current.scrollTop;
+    }
 
     // Start long press timer if provided
     if (onLongPress) {
@@ -65,7 +130,34 @@ export function usePressTracking({
   };
 
   const handlePointerMove = (e: React.PointerEvent) => {
-    if (!isPointerDown.current || disabled) return;
+    if (!isPointerDown.current || disabled) {
+      if (disabled && isPressed) {
+        cancelPress();
+      }
+      return;
+    }
+
+    // Check if modal slider moved (horizontal drag/swipe of the modal)
+    if (sliderRef?.current) {
+      const currentTx = getCurrentTranslateX(sliderRef.current);
+      if (Math.abs(currentTx - initialSliderTxRef.current) > 3) {
+        cancelPress();
+        return;
+      }
+      const diffX = Math.abs(e.clientX - touchStartXRef.current);
+      if (diffX > 15) {
+        cancelPress();
+        return;
+      }
+    }
+
+    // Check if scroll container moved (vertical list scroll)
+    if (scrollContainerRef?.current) {
+      if (Math.abs(scrollContainerRef.current.scrollTop - initialScrollTopRef.current) > 4) {
+        cancelPress();
+        return;
+      }
+    }
 
     if (!buttonRef.current) return;
     const rect = buttonRef.current.getBoundingClientRect();
@@ -80,6 +172,7 @@ export function usePressTracking({
       if (!isPressed) {
         setIsReentry(true);
         setIsPressed(true);
+        onPressChange?.(true);
         // Resume long press timer if it was cleared and we returned
         if (onLongPress && !isLongPressActive.current && !longPressTimerRef.current) {
           longPressTimerRef.current = setTimeout(() => {
@@ -99,6 +192,7 @@ export function usePressTracking({
         if (isPressed) {
           setIsPressed(false);
           setIsReentry(false);
+          onPressChange?.(false);
           // Clear long press timer if we exit the button area
           if (longPressTimerRef.current) {
             clearTimeout(longPressTimerRef.current);
@@ -113,6 +207,7 @@ export function usePressTracking({
             if (!isPressed) {
               setIsReentry(true);
               setIsPressed(true);
+              onPressChange?.(true);
               if (onLongPress && !isLongPressActive.current && !longPressTimerRef.current) {
                 longPressTimerRef.current = setTimeout(() => {
                   isLongPressActive.current = true;
@@ -126,6 +221,7 @@ export function usePressTracking({
           if (isPressed) {
             setIsPressed(false);
             setIsReentry(false);
+            onPressChange?.(false);
             if (longPressTimerRef.current) {
               clearTimeout(longPressTimerRef.current);
               longPressTimerRef.current = null;
@@ -138,10 +234,10 @@ export function usePressTracking({
 
   const handlePointerUp = (e: React.PointerEvent) => {
     // Release pointer capture
-    try {
-      (e.target as HTMLElement).releasePointerCapture(e.pointerId);
-    } catch (err) {
-      // Fail-safe
+    if (activePointerIdRef.current !== null) {
+      try {
+        (e.target as HTMLElement).releasePointerCapture(activePointerIdRef.current);
+      } catch (err) {}
     }
 
     if (!isPointerDown.current) return;
@@ -154,6 +250,7 @@ export function usePressTracking({
     isPointerDown.current = false;
     setIsPressed(false);
     setIsReentry(false);
+    onPressChange?.(false);
     isLongPressActive.current = false;
     if (longPressTimerRef.current) {
       clearTimeout(longPressTimerRef.current);
@@ -169,39 +266,49 @@ export function usePressTracking({
   };
 
   const handlePointerCancel = (e: React.PointerEvent) => {
-    try {
-      (e.target as HTMLElement).releasePointerCapture(e.pointerId);
-    } catch (err) {
-      // Fail-safe
-    }
-
-    isPointerDown.current = false;
-    setIsPressed(false);
-    setIsReentry(false);
-    isLongPressActive.current = false;
-    if (longPressTimerRef.current) {
-      clearTimeout(longPressTimerRef.current);
-      longPressTimerRef.current = null;
-    }
+    cancelPress();
   };
 
-  // Listen to window pointerup as a fallback
+  // Window pointer listeners as robust fallback during swipes / transitions
   useEffect(() => {
     const handleWindowPointerUp = () => {
       if (isPointerDown.current) {
-        isPointerDown.current = false;
-        setIsPressed(false);
-        setIsReentry(false);
-        isLongPressActive.current = false;
-        if (longPressTimerRef.current) {
-          clearTimeout(longPressTimerRef.current);
-          longPressTimerRef.current = null;
+        cancelPress();
+      }
+    };
+    const handleWindowPointerMove = (e: PointerEvent) => {
+      if (!isPointerDown.current) return;
+      if (disabled) {
+        cancelPress();
+        return;
+      }
+      if (sliderRef?.current) {
+        const currentTx = getCurrentTranslateX(sliderRef.current);
+        if (Math.abs(currentTx - initialSliderTxRef.current) > 3) {
+          cancelPress();
+          return;
+        }
+        const diffX = Math.abs(e.clientX - touchStartXRef.current);
+        if (diffX > 15) {
+          cancelPress();
+          return;
+        }
+      }
+      if (scrollContainerRef?.current) {
+        if (Math.abs(scrollContainerRef.current.scrollTop - initialScrollTopRef.current) > 4) {
+          cancelPress();
+          return;
         }
       }
     };
+
     window.addEventListener('pointerup', handleWindowPointerUp);
-    return () => window.removeEventListener('pointerup', handleWindowPointerUp);
-  }, []);
+    window.addEventListener('pointermove', handleWindowPointerMove);
+    return () => {
+      window.removeEventListener('pointerup', handleWindowPointerUp);
+      window.removeEventListener('pointermove', handleWindowPointerMove);
+    };
+  }, [disabled, sliderRef, scrollContainerRef, cancelPress]);
 
   return {
     isPressed,

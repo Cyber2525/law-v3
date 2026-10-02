@@ -125,8 +125,9 @@ export function DragControl<T extends string = string>({
   const isFirstSide = dragOffset < 50;
   const isSecondSide = !isFirstSide;
 
-  const BEZIER = 'cubic-bezier(0.32, 0.72, 0, 1)';
-  const scaleTransition = `scale 0.45s ${BEZIER}`;
+  const BEZIER = 'cubic-bezier(0.16, 1, 0.3, 1)';
+  const DURATION = '0.42s';
+  const scaleTransition = `scale ${DURATION} ${BEZIER}`;
   const fadeTransition = `opacity 0.1s ease-out`;
 
   const scaleFactor = isDragging ? 0.92 : 1;
@@ -163,8 +164,8 @@ export function DragControl<T extends string = string>({
           scale: scaleFactor,
           transformOrigin: pillOrigin,
           transition: isDragging
-            ? `scale 0.45s ${BEZIER}`
-            : `translate 0.45s ${BEZIER}, scale 0.45s ${BEZIER}, transform-origin 0.45s ${BEZIER}`,
+            ? `scale ${DURATION} ${BEZIER}`
+            : `translate ${DURATION} ${BEZIER}, scale ${DURATION} ${BEZIER}, transform-origin ${DURATION} ${BEZIER}`,
         }}
       />
 

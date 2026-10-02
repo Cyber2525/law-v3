@@ -3,29 +3,11 @@ import { MainContent } from './components/MainContent';
 import { ActionButtons } from './components/ActionButtons';
 import { StreamingModal } from './components/StreamingModal';
 import { RisksModal } from './components/RisksModal';
+import { ContactCardModal } from './components/ContactCardModal';
+import { BrowserStartPage } from './components/BrowserStartPage';
 import { NativeToggle } from './components/ui/NativeToggle';
 import { StoreProviderSwitcher } from './components/StoreProviderSwitcher';
-
-// --- Hooks ---
-function useMediaQuery(query: string) {
-  const [value, setValue] = useState(() => {
-    if (typeof window !== 'undefined') {
-      return window.matchMedia(query).matches;
-    }
-    return false;
-  });
-
-  useEffect(() => {
-    function onChange(event: MediaQueryListEvent) {
-      setValue(event.matches);
-    }
-    const result = matchMedia(query);
-    result.addEventListener("change", onChange);
-    setValue(result.matches);
-    return () => result.removeEventListener("change", onChange);
-  }, [query]);
-  return value;
-}
+import { useMediaQuery, DESKTOP_MEDIA_QUERY } from './hooks/useMediaQuery';
 
 const App: React.FC = () => {
   // Detect system preference initially
@@ -36,19 +18,39 @@ const App: React.FC = () => {
     return true;
   });
   
+  const isDesktop = useMediaQuery(DESKTOP_MEDIA_QUERY);
+  const isLandscape = useMediaQuery('(orientation: landscape)');
+  
   const [streamingModalOpen, setStreamingModalOpen] = useState(false);
   const [risksModalOpen, setRisksModalOpen] = useState(false);
+  const [ministerioModalOpen, setMinisterioModalOpen] = useState(false);
+  const [isHomePage, setIsHomePage] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return window.history.state?.page === 'home';
+    }
+    return false;
+  });
   const [hasViewedRisks, setHasViewedRisks] = useState(false);
   const [isStreamingCooldown, setIsStreamingCooldown] = useState(false);
   const [isRisksCooldown, setIsRisksCooldown] = useState(false);
   const [isAnimating, setIsAnimating] = useState(false);
-  const lastModalRef = useRef<'risks' | 'streaming' | null>(null);
+  const lastModalRef = useRef<'risks' | 'streaming' | 'ministerio' | null>(null);
+
+  // Sync document title with current page
+  useEffect(() => {
+    if (isHomePage) {
+      document.title = 'Página de inicio';
+    } else {
+      document.title = 'Acceso Restringido';
+    }
+  }, [isHomePage]);
 
   // Track which modal was last opened to maintain correct colors during closing animation
   useEffect(() => {
     if (risksModalOpen) lastModalRef.current = 'risks';
     else if (streamingModalOpen) lastModalRef.current = 'streaming';
-  }, [risksModalOpen, streamingModalOpen]);
+    else if (ministerioModalOpen) lastModalRef.current = 'ministerio';
+  }, [risksModalOpen, streamingModalOpen, ministerioModalOpen]);
 
   // Refs for cooldown timers and transition state to prevent race conditions
   const streamingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -58,21 +60,23 @@ const App: React.FC = () => {
 
   // Manage global CSS variables and transition state
   useEffect(() => {
-    const isOpen = risksModalOpen || streamingModalOpen;
-    const isDesktop = window.matchMedia('(min-width: 600px) and (min-height: 600px)').matches;
+    // Only Streaming and Risks modals animate/scale the background
+    const isScalingModalOpen = risksModalOpen || streamingModalOpen;
+    const isAnyModalOpen = isScalingModalOpen || ministerioModalOpen;
 
     if (isInitialMount.current) {
       isInitialMount.current = false;
       document.documentElement.style.setProperty('--drawer-transition-duration', '0s');
       document.documentElement.style.setProperty('--drawer-progress', '0');
-      if (!isOpen) return; // Skip closing animation on mount
+      if (!isAnyModalOpen) return; // Skip closing animation on mount
     }
 
-    if (isOpen) {
+    if (isAnyModalOpen) {
       setIsAnimating(true);
       isTransitioningRef.current = true;
       
-      if (!isDesktop) {
+      // Specifically disable background resizing animation for Contact Card (ministerio)
+      if (!isDesktop && isScalingModalOpen) {
         document.documentElement.style.setProperty('--drawer-transition-duration', '0.5s');
         document.documentElement.style.setProperty('--drawer-progress', '1');
       } else {
@@ -89,7 +93,8 @@ const App: React.FC = () => {
       setIsAnimating(true); // Set animating to true when starting to close
       isTransitioningRef.current = true;
       
-      if (!isDesktop) {
+      // Only animate background back if the closing modal had scaling enabled
+      if (!isDesktop && lastModalRef.current !== 'ministerio') {
         document.documentElement.style.setProperty('--drawer-transition-duration', '0.5s');
         document.documentElement.style.setProperty('--drawer-progress', '0');
       } else {
@@ -104,7 +109,7 @@ const App: React.FC = () => {
       }, 500);
       return () => clearTimeout(timer);
     }
-  }, [risksModalOpen, streamingModalOpen]);
+  }, [risksModalOpen, streamingModalOpen, ministerioModalOpen, isDesktop]);
 
   // Debug Visibility State (Persistent)
   const [isDebugVisible, setIsDebugVisible] = useState(() => {
@@ -114,20 +119,35 @@ const App: React.FC = () => {
     return false;
   });
 
-  // --- History Management for Modals ---
+  // --- History Management for Modals and Home Page ---
   useEffect(() => {
     const handlePopState = (e: PopStateEvent) => {
         const state = e.state || {};
         
-        if (state.modal === 'streaming') {
-            setStreamingModalOpen(true);
-            setRisksModalOpen(false);
-        } else if (state.modal === 'risks') {
-            setRisksModalOpen(true);
+        if (state.page === 'home') {
+            setIsHomePage(true);
             setStreamingModalOpen(false);
+            setRisksModalOpen(false);
+            setMinisterioModalOpen(false);
         } else {
-            setStreamingModalOpen(false);
-            setRisksModalOpen(false);
+            setIsHomePage(false);
+            if (state.modal === 'streaming') {
+                setStreamingModalOpen(true);
+                setRisksModalOpen(false);
+                setMinisterioModalOpen(false);
+            } else if (state.modal === 'risks') {
+                setRisksModalOpen(true);
+                setStreamingModalOpen(false);
+                setMinisterioModalOpen(false);
+            } else if (state.modal === 'ministerio' || state.externalAlert) {
+                setMinisterioModalOpen(true);
+                setStreamingModalOpen(false);
+                setRisksModalOpen(false);
+            } else {
+                setStreamingModalOpen(false);
+                setRisksModalOpen(false);
+                setMinisterioModalOpen(false);
+            }
         }
     };
 
@@ -135,14 +155,27 @@ const App: React.FC = () => {
     return () => window.removeEventListener('popstate', handlePopState);
   }, []);
 
+  const handleGoHome = useCallback(() => {
+    window.history.pushState({ ...window.history.state, page: 'home' }, '');
+    setIsHomePage(true);
+  }, []);
+
+  const handleReturnFromHome = useCallback(() => {
+    if (window.history.state?.page === 'home') {
+      window.history.back();
+    } else {
+      setIsHomePage(false);
+    }
+  }, []);
+
   const openStreamingModal = useCallback(() => {
       // Prevent opening if already open, in cooldown, or transitioning
-      if (isStreamingCooldown || streamingModalOpen || risksModalOpen || isTransitioningRef.current) return;
+      if (isStreamingCooldown || streamingModalOpen || risksModalOpen || ministerioModalOpen || isTransitioningRef.current) return;
       
       isTransitioningRef.current = true;
       window.history.pushState({ ...window.history.state, modal: 'streaming' }, '');
       setStreamingModalOpen(true);
-  }, [isStreamingCooldown, streamingModalOpen, risksModalOpen]);
+  }, [isStreamingCooldown, streamingModalOpen, risksModalOpen, ministerioModalOpen]);
 
   /**
    * Cierra el modal de streaming
@@ -178,13 +211,13 @@ const App: React.FC = () => {
   }, [streamingModalOpen]);
 
   const openRisksModal = useCallback(() => {
-      if (isRisksCooldown || risksModalOpen || streamingModalOpen || isTransitioningRef.current) return;
+      if (isRisksCooldown || risksModalOpen || streamingModalOpen || ministerioModalOpen || isTransitioningRef.current) return;
       
       isTransitioningRef.current = true;
       setHasViewedRisks(true);
       window.history.pushState({ ...window.history.state, modal: 'risks' }, '');
       setRisksModalOpen(true);
-  }, [isRisksCooldown, risksModalOpen, streamingModalOpen]);
+  }, [isRisksCooldown, risksModalOpen, streamingModalOpen, ministerioModalOpen]);
 
   const closeRisksModal = useCallback((activeSegment?: 'legal' | 'security') => {
       if (!risksModalOpen || isTransitioningRef.current) return;
@@ -206,15 +239,35 @@ const App: React.FC = () => {
           window.history.back();
       }
   }, [risksModalOpen]);
+
+  const openMinisterioModal = useCallback(() => {
+      if (ministerioModalOpen || streamingModalOpen || risksModalOpen || isTransitioningRef.current) return;
+      
+      isTransitioningRef.current = true;
+      window.history.pushState({ ...window.history.state, modal: 'ministerio', externalAlert: true }, '');
+      setMinisterioModalOpen(true);
+  }, [ministerioModalOpen, streamingModalOpen, risksModalOpen]);
+
+  const closeMinisterioModal = useCallback(() => {
+      if (!ministerioModalOpen || isTransitioningRef.current) return;
+      
+      isTransitioningRef.current = true;
+      setMinisterioModalOpen(false);
+      setTimeout(() => {
+          isTransitioningRef.current = false;
+      }, 500);
+
+      if (window.history.state?.externalAlert || window.history.state?.modal === 'ministerio') {
+          window.history.back();
+      }
+  }, [ministerioModalOpen]);
   // -------------------------------------
 
   // --- Theme Color Management ---
-  const isLandscape = useMediaQuery('(orientation: landscape)');
-  const isDesktop = useMediaQuery('(min-width: 600px) and (min-height: 600px)');
   const lastTopColorRef = useRef<string | null>(null);
   
   useEffect(() => {
-    const anyDrawerOpen = streamingModalOpen || risksModalOpen;
+    const anyDrawerOpen = streamingModalOpen || risksModalOpen || ministerioModalOpen;
     // We want to keep the drawer theme color while it's opening OR closing (animating)
     const activeDrawer = anyDrawerOpen || isAnimating;
     const isBottomSheet = activeDrawer && !isDesktop;
@@ -225,9 +278,7 @@ const App: React.FC = () => {
     
     // Drawer Backgrounds
     const DRAWER_BG_LIGHT = '#F2F2F7';
-    // Use lastModalRef to ensure the correct background color during the closing animation
-    const isRisksActive = risksModalOpen || (isAnimating && lastModalRef.current === 'risks');
-    const DRAWER_BG_DARK = isRisksActive ? '#1E1E20' : '#1c1c1e';
+    const DRAWER_BG_DARK = '#1c1c1e';
 
     let topColor = isDarkMode ? APP_BG_DARK : APP_BG_LIGHT;
     let bottomColor = isDarkMode ? APP_BG_DARK : APP_BG_LIGHT;
@@ -236,11 +287,12 @@ const App: React.FC = () => {
       // Bottom color matches drawer background
       bottomColor = isDarkMode ? DRAWER_BG_DARK : DRAWER_BG_LIGHT;
       
-      if (!isLandscape) {
-        // Portrait bottom sheet: Top turns black
+      const currentModal = streamingModalOpen ? 'streaming' : risksModalOpen ? 'risks' : ministerioModalOpen ? 'ministerio' : lastModalRef.current;
+      if (!isLandscape && currentModal !== 'ministerio') {
+        // Portrait bottom sheet with scaled background: Top turns black
         topColor = '#000000';
       } else {
-        // Horizontal bottom sheet: Top remains app background
+        // Horizontal bottom sheet or non-scaling contact card: Top remains app background
         topColor = isDarkMode ? APP_BG_DARK : APP_BG_LIGHT;
       }
     }
@@ -274,7 +326,7 @@ const App: React.FC = () => {
       document.body.style.backgroundColor = bottomColor;
     }
 
-  }, [isDarkMode, streamingModalOpen, risksModalOpen, isDesktop, isLandscape, isAnimating]);
+  }, [isDarkMode, streamingModalOpen, risksModalOpen, ministerioModalOpen, isDesktop, isLandscape, isAnimating]);
 
   useEffect(() => {
     if (isDarkMode) {
@@ -349,6 +401,16 @@ const App: React.FC = () => {
     localStorage.removeItem('DEBUG_MODE_ENABLED');
   };
 
+  if (isHomePage) {
+    return (
+      <BrowserStartPage
+        isDarkMode={isDarkMode}
+        onReturnToNotice={handleReturnFromHome}
+        onToggleDarkMode={setIsDarkMode}
+      />
+    );
+  }
+
   return (
     <div className="min-h-screen bg-[#0a0a0a] relative">
       <div vaul-drawer-wrapper="" className={`min-h-screen ${isDarkMode ? 'dark' : ''} relative z-10 overflow-hidden`}>
@@ -398,11 +460,14 @@ const App: React.FC = () => {
 
         <ActionButtons 
           onOpenStreaming={openStreamingModal} 
+          onOpenMinisterio={openMinisterioModal}
           onEnableDebug={enableDebugMode}
+          onGoBack={handleGoHome}
           isStreamingCooldown={isStreamingCooldown}
           isStreamingOpen={streamingModalOpen}
           isRisksCooldown={isRisksCooldown}
           isRisksOpen={risksModalOpen}
+          isMinisterioOpen={ministerioModalOpen}
           isDarkMode={isDarkMode}
         />
       </div>
@@ -415,6 +480,11 @@ const App: React.FC = () => {
       <RisksModal
         isOpen={risksModalOpen}
         onClose={closeRisksModal}
+      />
+
+      <ContactCardModal
+        isOpen={ministerioModalOpen}
+        onClose={closeMinisterioModal}
       />
     </div>
     </div>

@@ -24,8 +24,12 @@ export const DesktopModal = React.forwardRef<HTMLDivElement, DesktopModalProps>(
       <div 
           ref={ref}
           style={style}
-          className={`relative overflow-hidden isolation-isolate bg-[#F2F2F7]/70 dark:bg-[#1c1c1e]/70 rounded-[16px] shadow-2xl transform transition-all duration-[800ms] ease-[cubic-bezier(0.32,0.72,0,1)] ${isOpen ? 'translate-y-0' : 'translate-y-[100vh]'} ${containerClassName}`}
+          className={`relative overflow-hidden rounded-[16px] shadow-2xl max-w-[calc(100vw-32px)] bg-[#F2F2F7]/70 dark:bg-[#1c1c1e]/70 transform transition-all duration-[800ms] ease-[cubic-bezier(0.32,0.72,0,1)] ${isOpen ? 'translate-y-0' : 'translate-y-[100vh]'} ${containerClassName}`}
       >
+          <div 
+            className="absolute inset-0 backdrop-blur-xl -z-10 pointer-events-none" 
+            style={{ backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)' }}
+          />
           {children}
       </div>
     </div>

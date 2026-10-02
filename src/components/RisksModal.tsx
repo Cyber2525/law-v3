@@ -4,6 +4,7 @@ import { motion } from 'motion/react';
 import { DesktopModal } from './ui/DesktopModal';
 import { BottomSheet } from './ui/BottomSheet';
 import { DragControl } from './ui/DragControl';
+import { useMediaQuery, DESKTOP_MEDIA_QUERY } from '../hooks/useMediaQuery';
 
 // --- Types & Data ---
 
@@ -70,28 +71,6 @@ const SECURITY_RISKS: RiskItemData[] = [
   },
 ];
 
-// --- Helper Hooks ---
-
-function useMediaQuery(query: string) {
-  const [value, setValue] = React.useState(() => {
-    if (typeof window !== 'undefined') {
-      return window.matchMedia(query).matches;
-    }
-    return false;
-  });
-
-  React.useEffect(() => {
-    function onChange(event: MediaQueryListEvent) {
-      setValue(event.matches);
-    }
-    const result = matchMedia(query);
-    result.addEventListener("change", onChange);
-    setValue(result.matches);
-    return () => result.removeEventListener("change", onChange);
-  }, [query]);
-  return value;
-}
-
 // --- Components ---
 
 interface RisksModalProps {
@@ -100,12 +79,50 @@ interface RisksModalProps {
   isDarkMode?: boolean;
 }
 
+function cubicBezier(x1: number, y1: number, x2: number, y2: number) {
+  return function(t: number) {
+    if (t <= 0) return 0;
+    if (t >= 1) return 1;
+    let s = t;
+    for (let i = 0; i < 8; i++) {
+      const currentSlope = 3 * (1 - s) * (1 - s) * x1 + 6 * (1 - s) * s * (x2 - x1) + 3 * s * s * (1 - x2);
+      if (currentSlope === 0) break;
+      const currentX = 3 * (1 - s) * (1 - s) * s * x1 + 3 * (1 - s) * s * s * x2 + s * s * s - t;
+      s -= currentX / currentSlope;
+      s = Math.max(0, Math.min(1, s));
+    }
+    return 3 * (1 - s) * (1 - s) * s * y1 + 3 * (1 - s) * s * s * y2 + s * s * s;
+  };
+}
+const TRANSITION_CLASSES = "transform 800ms cubic-bezier(0.16, 1, 0.3, 1)";
+const easeIOS = cubicBezier(0.16, 1, 0.3, 1);
+
+function getCurrentTranslateX(element: HTMLElement | null): number {
+  if (!element) return 0;
+  const style = window.getComputedStyle(element);
+  const transform = style.transform || (style as any).webkitTransform;
+  if (!transform || transform === 'none') return 0;
+  const mat = transform.match(/^matrix\((.+)\)$/);
+  if (mat) {
+    const values = mat[1].split(',');
+    return parseFloat(values[4]?.trim() || '0') || 0;
+  }
+  const mat3d = transform.match(/^matrix3d\((.+)\)$/);
+  if (mat3d) {
+    const values = mat3d[1].split(',');
+    return parseFloat(values[12]?.trim() || '0') || 0;
+  }
+  return 0;
+}
+
 export const RisksModal: React.FC<RisksModalProps> = ({ isOpen, onClose, isDarkMode: isDarkModeProp }) => {
-  const isDesktop = useMediaQuery('(min-width: 600px) and (min-height: 600px)');
+  const isDesktop = useMediaQuery(DESKTOP_MEDIA_QUERY);
   const isLandscape = useMediaQuery('(orientation: landscape)');
   const [activeSegment, setActiveSegment] = useState<RiskType>('legal');
   const [isDismissable, setIsDismissable] = useState(false);
   const [scrollProgress, setScrollProgress] = useState(0);
+  const scrollAnimRef = useRef<number | null>(null);
+  const prevSegmentRef = useRef<RiskType>(activeSegment);
   const [isDarkMode, setIsDarkMode] = useState(() => {
     if (typeof isDarkModeProp === 'boolean') return isDarkModeProp;
     if (typeof window !== 'undefined') {
@@ -226,6 +243,7 @@ export const RisksModal: React.FC<RisksModalProps> = ({ isOpen, onClose, isDarkM
   const legalRef = useRef<HTMLDivElement>(null);
   const securityRef = useRef<HTMLDivElement>(null);
   const sliderRef = useRef<HTMLDivElement>(null);
+  const isDraggingRef = useRef(false);
   const isSwipingRef = useRef<boolean | null>(null);
   const touchStartXRef = useRef(0);
   const touchStartYRef = useRef(0);
@@ -243,15 +261,19 @@ export const RisksModal: React.FC<RisksModalProps> = ({ isOpen, onClose, isDarkM
 
   // Sync scroll progress with active segment or open state changes
   useEffect(() => {
-    if (isOpen) {
-        const currentRef = activeSegment === 'legal' ? legalRef.current : securityRef.current;
-        if (currentRef) {
-            setScrollProgress(Math.min(currentRef.scrollTop / 15, 1));
-        } else {
-            setScrollProgress(0);
+    if (!isOpen) {
+        if (scrollAnimRef.current) {
+            cancelAnimationFrame(scrollAnimRef.current);
+            scrollAnimRef.current = null;
         }
-    } else {
         setScrollProgress(0);
+        prevSegmentRef.current = 'legal';
+        return;
+    }
+
+    if (prevSegmentRef.current !== activeSegment) {
+        startLockout(800);
+        prevSegmentRef.current = activeSegment;
     }
   }, [activeSegment, isOpen]);
 
@@ -328,28 +350,71 @@ export const RisksModal: React.FC<RisksModalProps> = ({ isOpen, onClose, isDarkM
   };
 
   const lockoutTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const isTransitioningRef = useRef(false);
+  const startTranslateXRef = useRef(0);
+  const previousMoveXRef = useRef(0);
+  const lastDirectionRef = useRef<'left' | 'right' | null>(null);
+
+  const updateLiveScrollProgress = () => {
+    if (!sliderRef.current) return;
+    const containerWidth = sliderRef.current.offsetWidth / 2;
+    const currentTx = getCurrentTranslateX(sliderRef.current);
+    const ratio = Math.max(0, Math.min(1, -currentTx / containerWidth));
+    const scroll1 = legalRef.current ? Math.min(legalRef.current.scrollTop / 15, 1) : 0;
+    const scroll2 = securityRef.current ? Math.min(securityRef.current.scrollTop / 15, 1) : 0;
+    
+    const wCurrent = Math.min(1, (1 - ratio) / 0.075);
+    const wTarget = Math.min(1, ratio / 0.075);
+    const interpolatedScroll = Math.max(scroll1 * wCurrent, scroll2 * wTarget);
+    setScrollProgress(prev => (Math.abs(prev - interpolatedScroll) < 0.01 ? prev : interpolatedScroll));
+  };
 
   const startLockout = (duration = 800) => {
     if (lockoutTimerRef.current) clearTimeout(lockoutTimerRef.current);
     setIsAnimatingInternal(true);
+    isTransitioningRef.current = true;
+
+    if (scrollAnimRef.current) {
+      cancelAnimationFrame(scrollAnimRef.current);
+      scrollAnimRef.current = null;
+    }
+    const syncLiveScroll = () => {
+      updateLiveScrollProgress();
+      if (isTransitioningRef.current) {
+        scrollAnimRef.current = requestAnimationFrame(syncLiveScroll);
+      } else {
+        scrollAnimRef.current = null;
+      }
+    };
+    scrollAnimRef.current = requestAnimationFrame(syncLiveScroll);
+
     lockoutTimerRef.current = setTimeout(() => {
       setIsAnimatingInternal(false);
+      isTransitioningRef.current = false;
       lockoutTimerRef.current = null;
+      updateLiveScrollProgress();
     }, duration);
   };
 
   const changeSegment = (newSegment: RiskType) => {
-    if (isAnimating || newSegment === activeSegment) return;
+    if (newSegment === activeSegment && !isTransitioningRef.current) return;
+    if (sliderRef.current) {
+      sliderRef.current.style.transition = TRANSITION_CLASSES;
+      sliderRef.current.style.transform = newSegment === 'legal' ? 'translateX(0%)' : 'translateX(-50%)';
+    }
     startLockout(800);
     setActiveSegment(newSegment);
     activeSegmentRef.current = newSegment;
   };
 
   const onPointerDown = (e: React.PointerEvent) => {
-      if (isAnimating) return;
-      (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+      if (e.button !== 0) return;
+
       touchStartXRef.current = e.clientX;
       touchStartYRef.current = e.clientY;
+      previousMoveXRef.current = e.clientX;
+      lastDirectionRef.current = null;
+      isDraggingRef.current = true;
       isSwipingRef.current = null;
       
       let fromH = 0, toH = 0;
@@ -363,40 +428,59 @@ export const RisksModal: React.FC<RisksModalProps> = ({ isOpen, onClose, isDarkM
           if (contentElement) toH = Math.min((contentElement as HTMLElement).offsetHeight, maxHeight);
       }
       heightsRef.current = { legal: fromH, security: toH };
-
-      if (sliderRef.current) {
-          sliderRef.current.style.transition = 'none';
-      }
-      if (desktopModalRef.current && isDesktop) {
-          desktopModalRef.current.style.transition = 'none';
-      }
   };
 
   const onPointerMove = (e: React.PointerEvent) => {
-      if (touchStartXRef.current === 0) return; // Not dragging
+      if (!isDraggingRef.current) return;
       
       const currentX = e.clientX;
       const currentY = e.clientY;
       const diffX = currentX - touchStartXRef.current;
       const diffY = currentY - touchStartYRef.current;
 
+      // Detección directa del movimiento real en horizontal unificado con streaming
       if (isSwipingRef.current === null) {
           const absX = Math.abs(diffX);
           const absY = Math.abs(diffY);
-          if (absX > 5 || absY > 5) {
-              if (absX > absY) {
-                  isSwipingRef.current = true;
-              } else {
-                  isSwipingRef.current = false;
+          if (absY > absX && absY >= 7) {
+              isSwipingRef.current = false;
+              return;
+          }
+          if (absX > absY && absX >= 7) {
+              // ACTIVAR EL AGARRE INMEDIATO
+              isSwipingRef.current = true;
+
+              if (lockoutTimerRef.current) {
+                  clearTimeout(lockoutTimerRef.current);
+                  lockoutTimerRef.current = null;
               }
+              setIsAnimatingInternal(false);
+              isTransitioningRef.current = false;
+              if (scrollAnimRef.current) {
+                  cancelAnimationFrame(scrollAnimRef.current);
+                  scrollAnimRef.current = null;
+              }
+
+              const currentTx = sliderRef.current ? getCurrentTranslateX(sliderRef.current) : 0;
+              startTranslateXRef.current = currentTx - diffX;
+
+              if (sliderRef.current) {
+                  sliderRef.current.style.transition = 'none';
+                  sliderRef.current.style.transform = `translateX(${currentTx}px)`;
+              }
+
+              if (desktopModalRef.current && isDesktop) {
+                  desktopModalRef.current.style.transition = 'none';
+              }
+
+              try { (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId); } catch (err) {}
           }
       }
 
       if (isSwipingRef.current === true && sliderRef.current) {
           if (e.cancelable) e.preventDefault();
           const containerWidth = sliderRef.current.offsetWidth / 2;
-          const baseOffset = activeSegment === 'legal' ? 0 : -containerWidth;
-          let move = baseOffset + diffX;
+          let move = startTranslateXRef.current + diffX;
 
           if (move > 0) {
                move *= 0.3; 
@@ -405,77 +489,53 @@ export const RisksModal: React.FC<RisksModalProps> = ({ isOpen, onClose, isDarkM
                move = -containerWidth + (extra * 0.3);
           }
 
-          sliderRef.current.style.transform = `translateX(${move}px)`;
+          if (currentX < previousMoveXRef.current) lastDirectionRef.current = 'left';
+          else if (currentX > previousMoveXRef.current) lastDirectionRef.current = 'right';
+          previousMoveXRef.current = currentX;
 
-          // Interpolation for RisksModal scrollProgress with fast overscroll overlap logic
-          const ratio = activeSegment === 'legal' 
-              ? Math.max(0, Math.min(1, -move / containerWidth))
-              : Math.max(0, Math.min(1, (move + containerWidth) / containerWidth));
-          const scroll1 = legalRef.current ? Math.min(legalRef.current.scrollTop / 15, 1) : 0;
-          const scroll2 = securityRef.current ? Math.min(securityRef.current.scrollTop / 15, 1) : 0;
-          const fromScroll = activeSegment === 'legal' ? scroll1 : scroll2;
-          const toScroll = activeSegment === 'legal' ? scroll2 : scroll1;
-          
-          const wCurrent = Math.min(1, (1 - ratio) / 0.075);
-          const wTarget = Math.min(1, ratio / 0.075);
-          const interpolatedScroll = Math.max(fromScroll * wCurrent, toScroll * wTarget);
-          setScrollProgress(interpolatedScroll);
+          sliderRef.current.style.transform = `translateX(${move}px)`;
+          updateLiveScrollProgress();
 
           if (desktopModalRef.current && isDesktop) {
-              // ratio = 0 when at activeSegment, 1 at the opposite segment
-              const targetSegment = activeSegmentRef.current === 'legal' ? 'security' : 'legal';
-              const fromHeight = heightsRef.current[activeSegmentRef.current];
-              const toHeight = heightsRef.current[targetSegment];
-              const interpolatedHeight = fromHeight + (toHeight - fromHeight) * ratio;
+              const ratio = Math.max(0, Math.min(1, -move / containerWidth));
+              const interpolatedHeight = heightsRef.current.legal + (heightsRef.current.security - heightsRef.current.legal) * ratio;
               desktopModalRef.current.style.height = `${interpolatedHeight}px`;
           }
       }
   };
 
   const onPointerUp = (e: React.PointerEvent) => {
-      if (touchStartXRef.current === 0) return;
+      if (!isDraggingRef.current) return;
+      isDraggingRef.current = false;
       try { (e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId); } catch(err) {}
       
-      if (sliderRef.current) {
-          sliderRef.current.style.transition = 'transform 800ms cubic-bezier(0.32, 0.72, 0, 1)';
+      // Solo actuar sobre el slider si el agarre se activó
+      if (isSwipingRef.current === true && sliderRef.current) {
+          sliderRef.current.style.transition = TRANSITION_CLASSES;
+          const containerWidth = sliderRef.current.offsetWidth / 2;
 
-          let targetSegment = activeSegment;
-          let shouldChange = false;
-
-          if (isSwipingRef.current === true) {
-              const diffX = e.clientX - touchStartXRef.current;
-              const containerWidth = sliderRef.current.offsetWidth / 2;
-              const threshold = containerWidth * 0.25;
-
-              if (activeSegment === 'legal') {
-                  if (diffX < -threshold) {
-                      shouldChange = true;
-                      targetSegment = 'security';
-                  }
-              } else {
-                  if (diffX > threshold) {
-                      shouldChange = true;
-                      targetSegment = 'legal';
-                  }
-              }
+          let targetSegment: RiskType = activeSegment;
+          const currentTx = getCurrentTranslateX(sliderRef.current);
+          
+          if (lastDirectionRef.current === 'left') {
+              targetSegment = 'security';
+          } else if (lastDirectionRef.current === 'right') {
+              targetSegment = 'legal';
+          } else {
+              targetSegment = currentTx < -containerWidth / 2 ? 'security' : 'legal';
           }
 
           if (desktopModalRef.current && isDesktop) {
-              desktopModalRef.current.style.transition = 'height 800ms cubic-bezier(0.32,0.72,0,1)';
+              desktopModalRef.current.style.transition = 'height 800ms cubic-bezier(0.16, 1, 0.3, 1)';
               desktopModalRef.current.style.height = `${heightsRef.current[targetSegment]}px`; 
           }
 
-          if (shouldChange) {
+          sliderRef.current.style.transform = targetSegment === 'legal' ? 'translateX(0%)' : 'translateX(-50%)';
+
+          if (targetSegment !== activeSegment) {
               changeSegment(targetSegment);
           } else {
-              startLockout();
-              sliderRef.current.style.transform = targetSegment === 'legal' ? 'translateX(0%)' : 'translateX(-50%)';
-              
-              // Restore scroll progress for current active segment upon snapping back
-              const currentRef = activeSegment === 'legal' ? legalRef.current : securityRef.current;
-              if (currentRef) {
-                  setScrollProgress(Math.min(currentRef.scrollTop / 15, 1));
-              }
+              startLockout(800);
           }
 
           // Clear override styles once the 800ms transition finishes
@@ -492,53 +552,68 @@ export const RisksModal: React.FC<RisksModalProps> = ({ isOpen, onClose, isDarkM
       touchStartXRef.current = 0;
   };
 
-  const containerClass = "flex flex-col w-full h-full bg-[#F2F2F7] dark:bg-[#1E1E20] landscape:bg-[#F2F2F7]/70 landscape:dark:bg-[#1E1E20]/70 md:bg-[#F2F2F7]/70 md:dark:bg-[#1E1E20]/70 relative";
+  const containerClass = `flex flex-col w-full h-full relative ${isDesktop ? 'bg-transparent' : 'bg-[#F2F2F7] dark:bg-[#1c1c1e]'}`;
 
   const scrollAreaClass = "flex-1 overflow-hidden w-full";
+  const navTransition = isOpen ? TRANSITION_CLASSES : "none";
 
   const content = (
     <div className={containerClass}>
-        <div className="absolute inset-0 backdrop-blur-xl -z-10 hidden md:block" />
+        {isDesktop && (
+          <div 
+            className="absolute inset-0 backdrop-blur-xl -z-10 pointer-events-none" 
+            style={{ backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)' }}
+          />
+        )}
         {/* Fixed Header */}
-        <div 
-            className="absolute top-0 left-0 right-0 z-30 backdrop-blur-xl flex flex-col"
-            style={{
-                backgroundColor: isDesktop 
-                    ? (isDarkMode ? `rgba(30, 30, 32, ${scrollProgress * 0.7})` : `rgba(242, 242, 247, ${scrollProgress * 0.7})`)
-                    : (isDarkMode ? `rgba(30, 30, 32, 0.7)` : `rgba(242, 242, 247, 0.7)`)
-            }}
-        >
-            <div className="relative w-full flex items-center justify-center h-10 mt-4 shrink-0">
-                <h2 className="text-[22px] font-semibold text-gray-900 dark:text-white leading-none">
-                    Riesgos y Amenazas
-                </h2>
-                
-                {/* Botón X con feedback mejorado */}
-                <button 
-                    ref={closeButtonRef}
-                    onPointerDown={handleClosePointerDown}
-                    onPointerMove={handleClosePointerMove}
-                    onPointerUp={handleClosePointerUp}
-                    onPointerCancel={handleClosePointerCancel}
-                    className={`absolute right-4 top-0 w-10 h-10 bg-[#767680]/15 dark:bg-black/20 backdrop-blur-xl rounded-full flex items-center justify-center text-gray-500 dark:text-gray-400 outline-none touch-none pointer-events-auto cursor-pointer z-50 transition-opacity duration-300 gpu-accelerated ${
-                        isCloseActive ? 'opacity-30' : 'opacity-100'
-                    }`}
-                    style={{
-                        transitionDuration: (!isCloseActive || isCloseReentry) ? '300ms' : '0ms'
-                    }}
-                    aria-label="Cerrar"
-                >
-                    <X className="w-6 h-6" strokeWidth={2.5} />
-                </button>
-            </div>
+        <div className="absolute top-0 left-0 right-0 z-30 flex flex-col pointer-events-none">
+            {/* Translucent background with blur - isolated so it doesn't cause text-blur or rendering glitches in buttons */}
+            <div 
+                className="absolute inset-0 z-10"
+                style={{
+                    backdropFilter: `blur(${scrollProgress * 20}px)`,
+                    WebkitBackdropFilter: `blur(${scrollProgress * 20}px)`,
+                    backgroundColor: isDarkMode 
+                        ? `rgba(28, 28, 30, ${scrollProgress * 0.7})` 
+                        : `rgba(242, 242, 247, ${scrollProgress * 0.7})`,
+                    transition: 'none'
+                }}
+            />
 
-            {/* Segmented Control sincronizado con el grid de contenido (px-4 = 16px) */}
-            <div className="px-4 mt-4 mb-4 w-full shrink-0">
-                <DragControl 
-                    activeSegment={activeSegment} 
-                    onChange={changeSegment} 
-                    disabled={isAnimating}
-                />
+            {/* Interactive header elements - pointer-events-auto */}
+            <div className="relative z-20 flex flex-col pointer-events-auto">
+                <div className="relative w-full flex items-center justify-center h-10 mt-4 shrink-0">
+                    <h2 className="text-[22px] font-semibold text-gray-900 dark:text-white leading-none">
+                        Riesgos y Amenazas
+                    </h2>
+                    
+                    {/* Botón X con feedback mejorado */}
+                    <button 
+                        ref={closeButtonRef}
+                        onPointerDown={handleClosePointerDown}
+                        onPointerMove={handleClosePointerMove}
+                        onPointerUp={handleClosePointerUp}
+                        onPointerCancel={handleClosePointerCancel}
+                        className={`absolute right-4 top-0 w-10 h-10 bg-[#767680]/15 dark:bg-black/20 backdrop-blur-xl rounded-full flex items-center justify-center text-gray-500 dark:text-gray-400 outline-none touch-none pointer-events-auto cursor-pointer z-50 transition-opacity duration-300 gpu-accelerated ${
+                            isCloseActive ? 'opacity-30' : 'opacity-100'
+                        }`}
+                        style={{
+                            transitionDuration: (!isCloseActive || isCloseReentry) ? '300ms' : '0ms'
+                        }}
+                        aria-label="Cerrar"
+                    >
+                        <X className="w-6 h-6" strokeWidth={2.5} />
+                    </button>
+                </div>
+
+                {/* Segmented Control sincronizado con el grid de contenido (px-4 = 16px) */}
+                <div className="px-4 mt-4 mb-4 w-full shrink-0">
+                    <DragControl 
+                        activeSegment={activeSegment} 
+                        onChange={changeSegment} 
+                        disabled={false}
+                    />
+                </div>
             </div>
         </div>
 
@@ -553,15 +628,18 @@ export const RisksModal: React.FC<RisksModalProps> = ({ isOpen, onClose, isDarkM
             {/* Swipeable View Container */}
             <div 
                 ref={sliderRef}
-                className="flex w-[200%] h-full transition-transform duration-800 ease-[cubic-bezier(0.32,0.72,0,1)] will-change-transform touch-none select-none"
+                className="flex w-[200%] h-full will-change-transform touch-none select-none"
                 style={{
+                    transition: navTransition,
                     transform: activeSegment === 'legal' ? 'translateX(0%)' : 'translateX(-50%)'
                 }}
             >
                 {/* Left Slide: Legal */}
                 <div 
                     ref={legalRef}
-                    onScroll={(e) => setScrollProgress(Math.min(e.currentTarget.scrollTop / 15, 1))}
+                    onScroll={() => {
+                        updateLiveScrollProgress();
+                    }}
                     className="w-[50%] h-full overflow-y-auto no-scrollbar px-4 pb-4 touch-pan-y"
                 >
                     <div className="risks-content-inner">
@@ -605,7 +683,9 @@ export const RisksModal: React.FC<RisksModalProps> = ({ isOpen, onClose, isDarkM
                 {/* Right Slide: Security */}
                 <div 
                     ref={securityRef}
-                    onScroll={(e) => setScrollProgress(Math.min(e.currentTarget.scrollTop / 15, 1))}
+                    onScroll={() => {
+                        updateLiveScrollProgress();
+                    }}
                     className="w-[50%] h-full overflow-y-auto no-scrollbar px-4 pb-4 touch-pan-y"
                 >
                     <div className="risks-content-inner">
@@ -677,7 +757,7 @@ export const RisksModal: React.FC<RisksModalProps> = ({ isOpen, onClose, isDarkM
       contentClassName="h-[calc(90.7vh-0.84px)] flex-1"
     >
       <div className="absolute top-2 left-1/2 -translate-x-1/2 w-10 h-1.5 rounded-full bg-gray-300 dark:bg-gray-600 z-50 pointer-events-none opacity-80" />
-      <div className="flex-1 relative bg-[#F2F2F7] dark:bg-[#1E1E20] overflow-hidden rounded-t-[13px] landscape:rounded-t-[13px] landscape:rounded-b-none">
+      <div className="flex-1 relative bg-[#F2F2F7] dark:bg-[#1c1c1e] overflow-hidden rounded-t-[13px] landscape:rounded-t-[13px] landscape:rounded-b-none">
            {content}
       </div>
     </BottomSheet>
